@@ -49,6 +49,7 @@ async def members_handler(
 
     splitter = TelegramHTMLSplitter(send_func=message.answer)
     await splitter.add("<b>👥 Учасники чату</b>\n\n")
+    await splitter.add("<code>")
 
     for chat_user in chat_users:
         user = chat_user.user
@@ -59,6 +60,7 @@ async def members_handler(
         line = f"{html.escape(full_name)}{username}\n"
         await splitter.add(line)
 
+    await splitter.add("</code>")
     await splitter.flush()
 
 
