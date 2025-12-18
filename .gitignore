@@ -1,0 +1,8 @@
+__pycache__
+alembic
+
+*.env
+*.log
+*.bat
+*.db
+credentials.json

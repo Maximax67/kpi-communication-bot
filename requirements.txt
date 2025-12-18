@@ -1,0 +1,12 @@
+aiogram
+alembic
+asyncpg
+cachetools
+fastapi
+google_api_python_client
+openpyxl
+pandas
+pydantic
+pydantic_settings
+slowapi
+uvicorn
