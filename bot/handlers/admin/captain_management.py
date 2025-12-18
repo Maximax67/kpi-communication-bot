@@ -3,6 +3,7 @@ import re
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import delete, select
+from sqlalchemy.orm import joinedload
 
 from app.core.constants import COLUMN_REGEX, RANGE_REGEX, SPREADSHEET_URL_REGEX
 from app.core.enums import ChatType, MessageType, SpamType
@@ -575,3 +576,75 @@ async def confirm_spam_handler(
             f"❌ Критична помилка під час розсилки:\n<code>{html.escape(str(e))}</code>",
             parse_mode="HTML",
         )
+
+
+async def captains_list_handler(
+    message: Message,
+    organization: Organization,
+    lazy_db: LazyDbSession,
+) -> None:
+    if not message.from_user:
+        return
+
+    if message.chat.id != organization.admin_chat_id:
+        await message.answer(
+            "❌ Команда доступна для виконання лише з чату адміністраторів організації"
+        )
+        return
+
+    db = await lazy_db.get()
+
+    captains_stmt = (
+        select(ChatCaptain)
+        .options(
+            joinedload(ChatCaptain.connected_user),
+            joinedload(ChatCaptain.chat),
+        )
+        .where(ChatCaptain.organization_id == organization.id)
+        .order_by(ChatCaptain.chat_title)
+    )
+    captains_result = await db.execute(captains_stmt)
+    captains = captains_result.scalars().all()
+
+    if not captains:
+        await message.answer("📋 У організації поки що немає старост")
+        return
+
+    splitter = TelegramHTMLSplitter(send_func=message.answer)
+
+    await splitter.add(f"<b>📋 Список старост ({len(captains)})</b>\n\n")
+
+    for captain in captains:
+        if captain.chat:
+            chat_linked_text = f"✅ {html.escape(captain.chat_title)}"
+        else:
+            chat_linked_text = "❌"
+
+        if captain.connected_user:
+            user_verified_emoji = "🔵"
+
+            if captain.connected_user.username:
+                username_info = f"@{html.escape(captain.connected_user.username)}"
+            else:
+                username_info = "(без юзернейму)"
+        else:
+            user_verified_emoji = "🔴"
+            username_info = f"@{html.escape(captain.validated_username)}"
+
+        if captain.is_bot_blocked:
+            user_verified_emoji = "🚫"
+
+        await splitter.add(
+            f"<b>{html.escape(captain.chat_title)}</b>\n"
+            f"├ Чат: {chat_linked_text}\n"
+            f"├ Користувач: {user_verified_emoji} {username_info}\n"
+            f"└─────\n\n"
+        )
+
+    await splitter.add(
+        "<b>Легенда:</b>\n"
+        "Чат: ✅ під'єднано | ❌ не під'єднано\n"
+        "Користувач: 🔵 верифікований | 🔴 не верифікований | 🚫 заблокував бота\n"
+    )
+
+    await splitter.flush()

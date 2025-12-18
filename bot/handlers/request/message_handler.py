@@ -547,7 +547,7 @@ async def process_reply_request(
                     MessageDB.chat_id == message.chat.id,
                     MessageDB.message_id == message.reply_to_message.message_id,
                     MessageDB.user_id == message.from_user.id,
-                    MessageDB.status != MessageType.SPAM,
+                    MessageDB.type != MessageType.SPAM,
                 ),
             ),
             MessageDB.type != MessageType.SERVICE,
