@@ -95,5 +95,5 @@ admin_router.message.register(spam_all_captains_handler, Command("spam_all_capta
 
 admin_router.callback_query.register(
     confirm_spam_handler,
-    SpamCallback,
+    SpamCallback.filter(F.action == "spam"),
 )

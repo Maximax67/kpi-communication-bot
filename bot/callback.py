@@ -13,7 +13,8 @@ class OrganizationCallback(CallbackData, prefix="org"):
 
 
 class SpamCallback(CallbackData, prefix="spam"):
-    type: SpamType
+    action: str
+    spam_type: SpamType
 
 
 class ChatCallback(CallbackData, prefix="chat"):

@@ -409,7 +409,7 @@ async def handle_spam_command(
     kb = InlineKeyboardBuilder()
     kb.button(
         text="✅ Так, розіслати",
-        callback_data=SpamCallback(type=spam_type),
+        callback_data=SpamCallback(action="spam", spam_type=spam_type),
     )
     kb.button(text="❌ Скасувати", callback_data=MainCallback(action="cancel"))
     kb.adjust(1)
@@ -440,7 +440,7 @@ async def confirm_spam_handler(
         await callback.answer("❌ Текст з переліком груп не знайдено")
         return
 
-    spam_type = callback_data.type
+    spam_type = callback_data.spam_type
     if spam_type not in (
         SpamType.GROUPS,
         SpamType.CAPTAINS,
