@@ -2,6 +2,7 @@ aiogram
 alembic
 asyncpg
 cachetools
+cryptography
 fastapi
 google_api_python_client
 openpyxl
