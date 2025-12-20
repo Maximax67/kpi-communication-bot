@@ -1,16 +1,18 @@
+import html
 from typing import Any
 from aiogram import Bot
 from aiogram.types import Message, ReactionTypeEmoji, User, BufferedInputFile, MessageId
-from aiogram.enums import ChatType
-from sqlalchemy import and_, or_, select
+from aiogram.enums import ChatType as TelegramChatType
+from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import crypto
 from app.core.logger import logger
-from app.core.enums import CryptoInfo, MessageType, MessageStatus
+from app.core.enums import CryptoInfo, MessageType, MessageStatus, ChatType
 from app.db.models.banned_user import BannedUser
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
+from app.db.models.chat_user import ChatUser
 from app.db.models.message import Message as MessageDB
 from app.db.models.organization import Organization
 from app.db.models.telegram_bot import TelegramBot
@@ -352,11 +354,15 @@ async def send_message(
                 f"Надіслано {feedback_send_destination}", parse_mode="HTML"
             )
 
-    elif message_type == MessageType.INFO:
-        service_text = f"ℹ️ Повідомлення від {format_user_info_html(user)}"
-
-        if additional_service_text:
-            service_text += f"\n{additional_service_text}"
+    elif message_type in (MessageType.INFO, MessageType.SPAM):
+        if message_type == MessageType.SPAM:
+            service_text = "ℹ️ Розсилка"
+            if additional_service_text:
+                service_text += f" {additional_service_text}"
+        else:
+            service_text = f"ℹ️ Повідомлення від {format_user_info_html(user)}"
+            if additional_service_text:
+                service_text += f"\n{additional_service_text}"
 
         service_msg = await bot.send_message(
             to_send_chat_id,
@@ -418,97 +424,37 @@ async def send_message(
     return sent_msg_id
 
 
-async def send_captains_message(
-    db: AsyncSession,
-    message: Message,
-    to_send_chat_id: int,
-    to_send_thread_id: int | None,
-    sender_text: str | None = None,
-    user: User | None = None,
-) -> int | None:
-    if not message.from_user or not message.bot:
+async def get_captain_or_chat_info(db: AsyncSession, user_id: int) -> str | None:
+    captain_query = select(
+        literal(1).label("p"),
+        ChatCaptain.chat_title.label("r"),
+    ).where(ChatCaptain.connected_user_id == user_id)
+
+    external_chat_query = (
+        select(
+            literal(2).label("p"),
+            Chat.title.label("r"),
+        )
+        .join(ChatUser, ChatUser.chat_id == Chat.id)
+        .where(
+            ChatUser.user_id == user_id,
+            Chat.type == ChatType.EXTERNAL,
+        )
+    )
+
+    union_q = captain_query.union_all(external_chat_query).subquery()
+    stmt = select(union_q.c.p, union_q.c.r).order_by(union_q.c.p).limit(1)
+    result_db = await db.execute(stmt)
+    result: tuple[int, str] | None = result_db.tuples().one_or_none()
+
+    if result is None:
         return None
 
-    if user is None:
-        user = message.from_user
+    priority, value = result
+    if priority == 1:
+        return f"Староста {html.escape(value)}"
 
-    bot = message.bot
-    corrected_thread_id = (
-        message.message_thread_id
-        if message.chat.is_forum
-        and (
-            not message.reply_to_message
-            or not message.reply_to_message.forum_topic_created
-        )
-        else None
-    )
-    corrected_to_send_thread_id = to_send_thread_id if to_send_thread_id != 1 else None
-
-    service_text = f"ℹ️ Розсилка від {sender_text}"
-
-    service_msg = await bot.send_message(
-        to_send_chat_id,
-        service_text,
-        message_thread_id=corrected_to_send_thread_id,
-        parse_mode="HTML",
-    )
-
-    db.add(
-        MessageDB(
-            user_id=user.id,
-            chat_id=message.chat.id,
-            thread_id=corrected_thread_id,
-            message_id=message.message_id,
-            destination_chat_id=to_send_chat_id,
-            destination_thread_id=to_send_thread_id,
-            destination_message_id=service_msg.message_id,
-            is_within_organization=True,
-            type=MessageType.SERVICE,
-            text=service_text,
-        )
-    )
-
-    sent_msg_id = await copy_message(
-        message,
-        to_send_chat_id,
-        corrected_to_send_thread_id,
-        reply_to_message_id=None,
-        bot=bot,
-    )
-
-    db.add(
-        MessageDB(
-            user_id=user.id,
-            chat_id=message.chat.id,
-            thread_id=corrected_thread_id,
-            message_id=message.message_id,
-            destination_chat_id=to_send_chat_id,
-            destination_thread_id=to_send_thread_id,
-            destination_message_id=sent_msg_id,
-            is_within_organization=True,
-            type=MessageType.SPAM,
-            text=message.text or message.caption,
-        )
-    )
-
-    await db.commit()
-
-    return sent_msg_id
-
-
-async def get_captain_info(db: AsyncSession, user_id: int) -> str | None:
-    captain_stmt = (
-        select(ChatCaptain.chat_title)
-        .where(ChatCaptain.connected_user_id == user_id)
-        .limit(1)
-    )
-    captain_result = await db.execute(captain_stmt)
-    captain_chat_title = captain_result.scalar_one_or_none()
-
-    if captain_chat_title:
-        return f"Староста {captain_chat_title}"
-
-    return None
+    return f"Студент {html.escape(value)}"
 
 
 async def put_reaction(message: Message) -> None:
@@ -530,7 +476,7 @@ async def process_reply_request(
     reply_to_msg_id: int | None = None
     message_type = (
         MessageType.REQUEST
-        if message.chat.type == ChatType.PRIVATE
+        if message.chat.type == TelegramChatType.PRIVATE
         else MessageType.INFO_REPLY
     )
 
@@ -686,8 +632,8 @@ async def process_reply_request(
                     service_msg_reference.status_changed_by_user = message.from_user.id
 
     additional_info: str | None = None
-    if message.chat.type == ChatType.PRIVATE:
-        additional_info = await get_captain_info(db, message.from_user.id)
+    if message.chat.type == TelegramChatType.PRIVATE:
+        additional_info = await get_captain_or_chat_info(db, message.from_user.id)
 
     try:
         await send_message(
@@ -734,7 +680,8 @@ async def send_admin_request(
     if not message.from_user or not message.bot or not organization.admin_chat_id:
         return
 
-    additional_info = await get_captain_info(db, message.from_user.id)
+    additional_info = await get_captain_or_chat_info(db, message.from_user.id)
+
     await send_message(
         db,
         message,
@@ -760,7 +707,7 @@ async def message_handler(
         if await process_reply_request(db, message, organization):
             return
 
-    if message.chat.type == ChatType.PRIVATE:
+    if message.chat.type == TelegramChatType.PRIVATE:
         if not organization.is_admins_accept_messages or not organization.admin_chat_id:
             await message.answer("❌ Адміністратори не приймають повідомлення.")
             return

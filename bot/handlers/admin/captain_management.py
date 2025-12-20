@@ -1,3 +1,4 @@
+import asyncio
 import html
 import re
 from aiogram.types import Message, CallbackQuery
@@ -8,7 +9,7 @@ from sqlalchemy.orm import joinedload
 from app.core.constants import COLUMN_REGEX, RANGE_REGEX, SPREADSHEET_URL_REGEX
 from app.core.enums import ChatType, MessageType, SpamType
 from app.core.logger import logger
-from app.core.utils import update_captains
+from app.core.utils import update_captains_single_spreadhseet
 from app.db.models.captain_spreadsheet import CaptainSpreadsheet
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
@@ -88,27 +89,48 @@ async def set_captains_spreadsheet_handler(
 
     if len(parts) >= 5:
         remaining = parts[4].strip()
-        range_match = RANGE_REGEX.search(remaining)
-        if range_match:
-            rows_range_min = int(range_match.group(1))
-            rows_range_max = int(range_match.group(2))
+        last_space_idx = remaining.rfind(" ")
+        if last_space_idx != -1:
+            potential_range = remaining[last_space_idx + 1 :].strip()
+            range_match = RANGE_REGEX.match(potential_range)
+            if range_match:
+                rows_range_min = int(range_match.group(1))
+                rows_range_max = int(range_match.group(2))
 
-            if rows_range_min >= rows_range_max:
-                await message.answer(
-                    "❌ Мінімальне значення діапазону рядків має бути меншим за максимальне"
-                )
-                return
+                if rows_range_min >= rows_range_max:
+                    await message.answer(
+                        "❌ Мінімальне значення діапазону рядків має бути меншим за максимальне"
+                    )
+                    return
 
-            if rows_range_min < 0 or rows_range_max < 0:
-                await message.answer(
-                    "❌ Значення діапазону рядків не можуть бути від'ємними"
-                )
-                return
+                if rows_range_min < 0 or rows_range_max < 0:
+                    await message.answer(
+                        "❌ Значення діапазону рядків не можуть бути від'ємними"
+                    )
+                    return
 
-            remaining = remaining[: range_match.start()].strip()
+                sheet_name = remaining[:last_space_idx].strip() or None
+            else:
+                sheet_name = remaining
+        else:
+            range_match = RANGE_REGEX.match(remaining)
+            if range_match:
+                rows_range_min = int(range_match.group(1))
+                rows_range_max = int(range_match.group(2))
 
-        if remaining:
-            sheet_name = remaining
+                if rows_range_min >= rows_range_max:
+                    await message.answer(
+                        "❌ Мінімальне значення діапазону рядків має бути меншим за максимальне"
+                    )
+                    return
+
+                if rows_range_min < 0 or rows_range_max < 0:
+                    await message.answer(
+                        "❌ Значення діапазону рядків не можуть бути від'ємними"
+                    )
+                    return
+            else:
+                sheet_name = remaining
 
     db = await lazy_db.get()
 
@@ -141,25 +163,38 @@ async def set_captains_spreadsheet_handler(
 
     await db.commit()
 
-    try:
-        await update_captains(db)
+    await message.answer(
+        f"✅ Таблицю старост успішно {action}!\n\n"
+        f"<b>ID таблиці:</b> <code>{html.escape(spreadsheet_id)}</code>\n"
+        f"<b>Колонка назви чату:</b> {html.escape(chat_column)}\n"
+        f"<b>Колонка username:</b> {html.escape(username_column)}\n"
+        + (f"<b>Назва аркуша:</b> {html.escape(sheet_name)}\n" if sheet_name else "")
+        + (
+            f"<b>Діапазон рядків:</b> {rows_range_min}-{rows_range_max}\n"
+            if rows_range_min and rows_range_max
+            else ""
+        ),
+        parse_mode="HTML",
+    )
 
-        await message.answer(
-            f"✅ Таблицю старост успішно {action} та синхронізовано!\n\n"
-            f"<b>ID таблиці:</b> <code>{html.escape(spreadsheet_id)}</code>\n"
-            f"<b>Колонка назви чату:</b> {html.escape(chat_column)}\n"
-            f"<b>Колонка username:</b> {html.escape(username_column)}\n"
-            + (
-                f"<b>Назва аркуша:</b> {html.escape(sheet_name)}\n"
-                if sheet_name
-                else ""
-            )
-            + (
-                f"<b>Діапазон рядків:</b> {rows_range_min}-{rows_range_max}\n"
-                if rows_range_min and rows_range_max
-                else ""
-            ),
-            parse_mode="HTML",
+    try:
+        captains_stmt = (
+            select(ChatCaptain)
+            .options(joinedload(ChatCaptain.connected_user))
+            .where(ChatCaptain.organization_id == organization.id)
+        )
+        captains_result = await db.execute(captains_stmt)
+        captains = captains_result.scalars().all()
+
+        organization_captains: dict[str, ChatCaptain] = {}
+        for captain in captains:
+            organization_captains[captain.chat_title] = captain
+
+        await update_captains_single_spreadhseet(
+            db,
+            new_spreadsheet,
+            organization_captains,
+            organization,
         )
     except Exception as e:
         logger.error(e)
@@ -539,11 +574,14 @@ async def confirm_spam_handler(
                     chat_id,
                     thread_id,
                     None,
-                    MessageType.INFO,
+                    MessageType.SPAM,
+                    html.escape(organization.title),
                 )
                 success.append(name)
             except Exception as e:
                 failed.append((name, str(e)))
+            finally:
+                await asyncio.sleep(1)
 
         splitter = TelegramHTMLSplitter(send_func=callback.message.answer)
 
@@ -615,13 +653,10 @@ async def captains_list_handler(
     await splitter.add(f"<b>📋 Список старост ({len(captains)})</b>\n\n")
 
     for captain in captains:
-        if captain.chat:
-            chat_linked_text = f"✅ {html.escape(captain.chat_title)}"
-        else:
-            chat_linked_text = "❌"
+        chat_linked_text = "✅" if captain.chat else "❌"
 
         if captain.connected_user:
-            user_verified_emoji = "🔵"
+            user_verified_emoji = "🚫" if captain.is_bot_blocked else "🔵"
 
             if captain.connected_user.username:
                 username_info = f"@{html.escape(captain.connected_user.username)}"
@@ -631,20 +666,72 @@ async def captains_list_handler(
             user_verified_emoji = "🔴"
             username_info = f"@{html.escape(captain.validated_username)}"
 
-        if captain.is_bot_blocked:
-            user_verified_emoji = "🚫"
-
         await splitter.add(
             f"<b>{html.escape(captain.chat_title)}</b>\n"
             f"├ Чат: {chat_linked_text}\n"
-            f"├ Користувач: {user_verified_emoji} {username_info}\n"
-            f"└─────\n\n"
+            f"└ {user_verified_emoji} {username_info}\n"
         )
 
     await splitter.add(
-        "<b>Легенда:</b>\n"
-        "Чат: ✅ під'єднано | ❌ не під'єднано\n"
-        "Користувач: 🔵 верифікований | 🔴 не верифікований | 🚫 заблокував бота\n"
+        "\n<b>--- Легенда ---</b>\n"
+        "Чат:\n"
+        "✅ під'єднано\n"
+        "❌ не під'єднано\n"
+        "\nКористувач:\n"
+        "🔵 верифікований\n"
+        "🔴 не верифікований\n"
+        "🚫 заблокував бота"
     )
 
     await splitter.flush()
+
+
+async def update_captains_handler(
+    message: Message,
+    organization: Organization,
+    lazy_db: LazyDbSession,
+) -> None:
+    if message.chat.id != organization.admin_chat_id:
+        await message.answer(
+            "❌ Команда доступна для виконання лише з чату адміністраторів організації"
+        )
+        return
+
+    db = await lazy_db.get()
+    spreadsheet_stmt = select(CaptainSpreadsheet).where(
+        CaptainSpreadsheet.organization_id == organization.id
+    )
+    spreadsheet_result = await db.execute(spreadsheet_stmt)
+    spreadsheet = spreadsheet_result.scalar_one_or_none()
+
+    if spreadsheet is None:
+        await message.answer("❌ Таблиця старост не налаштована для цієї організації")
+        return
+
+    try:
+        captains_stmt = (
+            select(ChatCaptain)
+            .options(joinedload(ChatCaptain.connected_user))
+            .where(ChatCaptain.organization_id == organization.id)
+        )
+        captains_result = await db.execute(captains_stmt)
+        captains = captains_result.scalars().all()
+
+        organization_captains: dict[str, ChatCaptain] = {}
+        for captain in captains:
+            organization_captains[captain.chat_title] = captain
+
+        await update_captains_single_spreadhseet(
+            db,
+            spreadsheet,
+            organization_captains,
+            organization,
+        )
+        await message.answer("✅ Дані з таблиці старост синхронізовано!")
+    except Exception as e:
+        logger.error(e)
+        await message.answer(
+            f"⚠️ Виникла помилка при синхронізації:\n"
+            f"<code>{html.escape(str(e))}</code>\n\n",
+            parse_mode="HTML",
+        )

@@ -44,14 +44,10 @@ async def chat_verify(
             chat_organization_id, chat_type = chat_organization
             if chat_organization_id != organization.id:
                 await message.answer(
-                    "❌ Чат не можливо верифікувати, адже він належить до іншої організації",
-                    allow_sending_without_reply=True,
+                    "❌ Чат не можливо верифікувати, адже він належить до іншої організації"
                 )
             elif not is_bot_added:
-                await message.answer(
-                    "Чат вже верифікований!",
-                    allow_sending_without_reply=True,
-                )
+                await message.answer("Чат вже верифікований!")
 
             if chat_type == ChatType.INTERNAL:
                 await set_bot_commands_for_internal_chat(
@@ -71,7 +67,7 @@ async def chat_verify(
             is_chat_admin = False
             for admin in organization_admins:
                 if admin.user.id == user.id:
-                    is_chat_admin = True
+                    # is_chat_admin = True
                     break
 
             if is_chat_admin:
@@ -86,8 +82,7 @@ async def chat_verify(
                 )
                 await db.commit()
                 await message.answer(
-                    f"Чат {message.chat.title} верифіковано як для внутрішньої роботи {organization.title}",
-                    allow_sending_without_reply=True,
+                    f"Чат {message.chat.title} верифіковано як для внутрішньої роботи {organization.title}"
                 )
                 await message.bot.send_message(
                     organization.admin_chat_id,
@@ -109,18 +104,15 @@ async def chat_verify(
                             if captain.connected_chat_id == message.chat.id:
                                 if message.chat.is_forum:
                                     await message.answer(
-                                        f"Чат групи {captain.chat_title} вже під'єднано. Якщо бажаєте щоб бот надсилав повідомлення в іншу гілку, пропишіть в ній /migrate",
-                                        allow_sending_without_reply=True,
+                                        f"Чат групи {captain.chat_title} вже під'єднано. Якщо бажаєте щоб бот надсилав повідомлення в іншу гілку, пропишіть в ній /migrate"
                                     )
                                 else:
                                     await message.answer(
-                                        f"Чат групи {captain.chat_title} вже під'єднано.",
-                                        allow_sending_without_reply=True,
+                                        f"Чат групи {captain.chat_title} вже під'єднано."
                                     )
                             else:
                                 await message.answer(
-                                    "Ви вже під'єднали чат своєї групи, якщо бажаєте мігрувати чат сюди, то надішліть команду /migrate",
-                                    allow_sending_without_reply=True,
+                                    "Ви вже під'єднали чат своєї групи, якщо бажаєте мігрувати чат сюди, то надішліть команду /migrate"
                                 )
 
                         return
@@ -130,7 +122,7 @@ async def chat_verify(
                             id=message.chat.id,
                             organization_id=organization.id,
                             title=captain.chat_title,
-                            captain_connected_thread=message.message_thread_id,
+                            captain_connected_thread=None if is_bot_added else message.message_thread_id,
                             type=ChatType.EXTERNAL,
                             visibility_level=VisibilityLevel.INTERNAL,
                         )
@@ -140,13 +132,11 @@ async def chat_verify(
 
                     if organization.is_admins_accept_messages:
                         await message.answer(
-                            f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення.",
-                            allow_sending_without_reply=True,
+                            f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення."
                         )
                     else:
                         await message.answer(
-                            f"Чат {captain.chat_title} верифіковано старостою",
-                            allow_sending_without_reply=True,
+                            f"Чат {captain.chat_title} верифіковано старостою"
                         )
 
                     await message.bot.send_message(
@@ -186,16 +176,10 @@ async def verify_captain_private_chat(
         captain.connected_user_id = user.id
         captain.is_bot_blocked = False
 
-        base_text = f"Вітаємо. Вас успішно ідентифіковано як старосту {captain.chat_title}! Це бот для комунікації з {organization.title}."
-        if organization.is_admins_accept_messages:
-            await message.answer(
-                f"{base_text} У разі потреби звернутись до нас просто напишіть ваше повідомлення.",
-                allow_sending_without_reply=True,
-            )
-            return True
-
         await db.commit()
-        await message.answer(base_text, allow_sending_without_reply=True)
+        await message.answer(
+            f"Вітаємо. Вас успішно ідентифіковано як старосту {captain.chat_title}!"
+        )
         await message.bot.send_message(
             organization.admin_chat_id,
             f"Староста {captain.chat_title} {format_user_info(user)} активував бота.",
@@ -204,10 +188,7 @@ async def verify_captain_private_chat(
         return True
 
     if captain:
-        await message.answer(
-            f"Вас ідентифіковано як старосту {captain.chat_title}.",
-            allow_sending_without_reply=True,
-        )
+        await message.answer(f"Вас ідентифіковано як старосту {captain.chat_title}.")
 
         if captain.is_bot_blocked:
             captain.is_bot_blocked = False

@@ -37,8 +37,10 @@ async def edit_callback_message(
             except Exception as e:
                 logger.error(e)
 
-    if is_success and answer:
-        await callback.answer()
+    if is_success:
+        if answer:
+            await callback.answer()
+
         return
 
     raise Exception("Can not edit callback message or send a new one")

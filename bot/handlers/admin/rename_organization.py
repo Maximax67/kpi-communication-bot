@@ -18,6 +18,7 @@ from bot.utils.notify_organization import notify_organization
 async def rename_organization_handler(
     message: Message,
     organization: Organization,
+    organization_cache: OrganizationCache,
     lazy_db: LazyDbSession,
 ) -> None:
     if not message.text or not message.from_user:
@@ -56,6 +57,8 @@ async def rename_organization_handler(
         db = await lazy_db.get()
         await db.merge(organization)
         await db.commit()
+
+        organization_cache.update(organization)
 
         await message.answer(
             f"✅ Організацію перейменовано\n"

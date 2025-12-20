@@ -31,6 +31,14 @@ async def set_bot_commands_for_admin_chat(
         BotCommand(command="set_admin_chat", description="Встановити адмін чат"),
         BotCommand(command="set_bot", description="Встановити бота"),
         BotCommand(command="delete_bot", description="Видалити бота"),
+        BotCommand(
+            command="set_greeting",
+            description="Встановити вітальне повідомлення",
+        ),
+        BotCommand(
+            command="delete_greeting",
+            description="Видалити вітальне повідомлення",
+        ),
         # Chat management
         BotCommand(command="delete_selected_chat", description="Видалити обраний чат"),
         # Ban management
@@ -49,6 +57,10 @@ async def set_bot_commands_for_admin_chat(
         BotCommand(command="spam_captains", description="Розсилка до старост"),
         BotCommand(command="spam_all_groups", description="Розсилка до всіх груп"),
         BotCommand(command="spam_all_captains", description="Розсилка до всіх старост"),
+        BotCommand(command="captains_list", description="Вивести список старост"),
+        BotCommand(
+            command="update_captains", description="Оновити дані з таблиці старост"
+        ),
         # Request management
         BotCommand(command="send", description="Надіслати повідомлення"),
         BotCommand(command="send_task", description="Надіслати завдання"),

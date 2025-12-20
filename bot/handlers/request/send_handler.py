@@ -14,7 +14,7 @@ from app.db.models.chat import Chat
 from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
 from bot.callback import MainCallback, MessageCallback
-from bot.handlers.request.message_handler import send_message
+from bot.handlers.request.message_handler import put_reaction, send_message
 from bot.middlewares.ban_middleware import BanController
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.edit_callback_message import edit_callback_message
@@ -437,7 +437,8 @@ async def send_handler(
             await message.answer("❌ Не вдалось ідентифікувати ваш чат")
             return
 
-        if type_and_title[0] == ChatType.INTERNAL:
+        chat_type, title = type_and_title
+        if chat_type == ChatType.INTERNAL:
             await show_available_org_chats(
                 db,
                 message,
@@ -447,7 +448,7 @@ async def send_handler(
             )
             return
 
-        service_text = html.escape(type_and_title[1])
+        service_text = f"Чат групи {html.escape(title)}"
 
     if not organization.admin_chat_id or (
         not organization.is_admins_accept_messages
@@ -455,6 +456,8 @@ async def send_handler(
     ):
         await message.answer("❌ Адміністратори не приймають повідомлення.")
         return
+
+    destination_text = f"<b>{html.escape(organization.title)}</b>"
 
     await send_message(
         db,
@@ -464,9 +467,10 @@ async def send_handler(
         None,
         MessageType.REQUEST,
         service_text,
-        "Успішно надіслано!",
+        destination_text,
         message.from_user,
     )
+    await put_reaction(message.reply_to_message)
 
 
 async def send_task_handler(

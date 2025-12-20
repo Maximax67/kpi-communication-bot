@@ -11,6 +11,10 @@ from bot.handlers.admin.chat_delete import (
     delete_seleted_chat_handler,
     select_chat_delete_handler,
 )
+from bot.handlers.admin.greeting_message import (
+    delete_greeting_handler,
+    set_greeting_handler,
+)
 from bot.handlers.admin.organization_settings import (
     confirm_delete_handler,
     request_delete_handler,
@@ -34,6 +38,7 @@ from bot.handlers.admin.captain_management import (
     spam_all_groups_handler,
     spam_captains_handler,
     spam_groups_handler,
+    update_captains_handler,
 )
 
 
@@ -57,6 +62,9 @@ admin_router.callback_query.register(
     confirm_delete_handler,
     OrganizationCallback.filter(F.action == "confirm_delete"),
 )
+
+admin_router.message.register(set_greeting_handler, Command("set_greeting"))
+admin_router.message.register(delete_greeting_handler, Command("delete_greeting"))
 
 admin_router.message.register(
     rename_organization_handler, Command("rename_organization")
@@ -87,6 +95,7 @@ admin_router.message.register(
     delete_captains_spreadsheet_handler, Command("delete_captains_spreadsheet")
 )
 admin_router.message.register(captains_list_handler, Command("captains_list"))
+admin_router.message.register(update_captains_handler, Command("update_captains"))
 
 admin_router.message.register(spam_groups_handler, Command("spam_groups"))
 admin_router.message.register(spam_captains_handler, Command("spam_captains"))
