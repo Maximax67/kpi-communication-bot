@@ -7,9 +7,8 @@ from sqlalchemy import exists, select
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import crypto
 from app.core.logger import logger
-from app.core.enums import ChatType, CryptoInfo, MessageType, VisibilityLevel
+from app.core.enums import ChatType, MessageType, VisibilityLevel
 from app.db.models.chat import Chat
 from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
@@ -18,6 +17,7 @@ from bot.handlers.request.message_handler import put_reaction, send_message
 from bot.middlewares.ban_middleware import BanController
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.edit_callback_message import edit_callback_message
+from bot.utils.get_bot import get_organization_bot
 
 
 async def change_callback_or_message(
@@ -535,16 +535,6 @@ async def select_organization_handler(
         return
 
     await show_available_organizations(db, callback, organization, callback_data.type)
-
-
-def get_organization_bot(organization: Organization) -> Bot:
-    if not organization.bot:
-        raise ValueError("Organization without bot")
-
-    token_stripped = crypto.decrypt_data(organization.bot.token, CryptoInfo.BOT_TOKEN)
-    token = f"{organization.bot.id}:{token_stripped}"
-
-    return Bot(token)
 
 
 async def select_admin_chat_handler(

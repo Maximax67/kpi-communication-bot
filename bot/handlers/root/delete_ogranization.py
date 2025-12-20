@@ -1,7 +1,6 @@
 import html
 from aiogram.types import Message, CallbackQuery
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
@@ -15,13 +14,7 @@ from bot.utils.edit_callback_message import edit_callback_message
 from bot.utils.notify_organization import notify_organization
 
 
-async def delete_organization_handler(
-    message: Message,
-    state: FSMContext,
-    lazy_db: LazyDbSession,
-) -> None:
-    await state.clear()
-
+async def delete_organization_handler(message: Message, lazy_db: LazyDbSession) -> None:
     db = await lazy_db.get()
     result = await db.execute(select(Organization).where(Organization.id != 0))
     organizations = result.scalars().all()

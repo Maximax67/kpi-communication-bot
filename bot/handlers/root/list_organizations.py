@@ -1,6 +1,5 @@
 import html
 from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, exists
 from sqlalchemy.orm import aliased
 
@@ -9,15 +8,9 @@ from app.db.models.telegram_bot import TelegramBot
 from bot.middlewares.db_session import LazyDbSession
 
 
-async def organizations_handler(
-    message: Message,
-    state: FSMContext,
-    lazy_db: LazyDbSession,
-) -> None:
+async def organizations_handler(message: Message, lazy_db: LazyDbSession) -> None:
     if message.from_user is None:
         return
-
-    await state.clear()
 
     db = await lazy_db.get()
 

@@ -19,6 +19,7 @@ from bot.handlers.root.create_organization import (
     reject_organization,
 )
 from bot.callback import OrganizationCallback
+from bot.handlers.root.update_commands import update_commands_handler
 
 
 root_router = Router()
@@ -31,6 +32,11 @@ root_router.message.register(
 root_router.message.register(
     delete_organization_handler,
     Command("delete_organization"),
+    F.chat.id == settings.ROOT_ADMIN_CHAT_ID,
+)
+root_router.message.register(
+    update_commands_handler,
+    Command("update_commands"),
     F.chat.id == settings.ROOT_ADMIN_CHAT_ID,
 )
 

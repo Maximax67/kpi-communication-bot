@@ -75,6 +75,9 @@ async def set_bot_commands_for_admin_chat(
                 BotCommand(
                     command="delete_organization", description="Видалити організацію"
                 ),
+                BotCommand(
+                    command="update_commands", description="Оновити список команд"
+                ),
             ]
         )
 

@@ -1,6 +1,5 @@
 from aiogram.types import Message
 from aiogram.enums import ChatType
-from aiogram.fsm.context import FSMContext
 
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession
@@ -9,7 +8,6 @@ from bot.utils.chat_verify import chat_verify, verify_captain_private_chat
 
 async def verify_handler(
     message: Message,
-    state: FSMContext,
     lazy_db: LazyDbSession,
     organization: Organization,
 ) -> None:
@@ -19,8 +17,6 @@ async def verify_handler(
         or organization.admin_chat_id is None
     ):
         return
-
-    await state.clear()
 
     db = await lazy_db.get()
     is_private = message.chat.type == ChatType.PRIVATE
