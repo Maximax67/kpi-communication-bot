@@ -28,17 +28,10 @@ from bot.handlers.admin.bot_management import (
     set_bot_handler,
     delete_bot_handler,
 )
-from bot.callback import ChatCallback, OrganizationCallback, SpamCallback
-from bot.handlers.admin.captain_management import (
-    captains_list_handler,
-    confirm_spam_handler,
+from bot.callback import ChatCallback, OrganizationCallback
+from bot.handlers.admin.captain_spreadsheet import (
     delete_captains_spreadsheet_handler,
     set_captains_spreadsheet_handler,
-    spam_all_captains_handler,
-    spam_all_groups_handler,
-    spam_captains_handler,
-    spam_groups_handler,
-    update_captains_handler,
 )
 
 
@@ -93,16 +86,4 @@ admin_router.message.register(
 )
 admin_router.message.register(
     delete_captains_spreadsheet_handler, Command("delete_captains_spreadsheet")
-)
-admin_router.message.register(captains_list_handler, Command("captains_list"))
-admin_router.message.register(update_captains_handler, Command("update_captains"))
-
-admin_router.message.register(spam_groups_handler, Command("spam_groups"))
-admin_router.message.register(spam_captains_handler, Command("spam_captains"))
-admin_router.message.register(spam_all_groups_handler, Command("spam_all_groups"))
-admin_router.message.register(spam_all_captains_handler, Command("spam_all_captains"))
-
-admin_router.callback_query.register(
-    confirm_spam_handler,
-    SpamCallback.filter(F.action == "spam"),
 )

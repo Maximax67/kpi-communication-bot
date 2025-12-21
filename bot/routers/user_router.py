@@ -11,13 +11,19 @@ from bot.handlers.user.bot_added import bot_added_handler
 from bot.handlers.user.bot_removed import bot_removed_handler
 from bot.handlers.user.migrate import migrate_handler
 from bot.handlers.user.start import start_handler
-from bot.handlers.user.verify import verify_handler
+from bot.handlers.user.verify import (
+    verify_external_handler,
+    verify_handler,
+    verify_internal_handler,
+)
 from bot.states import CreateOrganizationStates
 
 
 user_router = Router()
 user_router.message.register(start_handler, CommandStart())
 user_router.message.register(verify_handler, Command("verify"))
+user_router.message.register(verify_external_handler, Command("verify_external"))
+user_router.message.register(verify_internal_handler, Command("verify_internal"))
 user_router.message.register(migrate_handler, Command("migrate"))
 
 user_router.message.register(

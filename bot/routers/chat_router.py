@@ -1,7 +1,7 @@
 from aiogram import F, Router
 from aiogram.filters import Command
 
-from bot.callback import ChatCallback, ThreadCallback
+from bot.callback import ChatCallback, SpamCallback, ThreadCallback
 from bot.handlers.chat.admin_commands import (
     confirm_chat_delete_handler,
     delete_chat_handler,
@@ -20,6 +20,15 @@ from bot.handlers.chat.admin_commands import (
     set_thread_tags_handler,
     thread_visibility_handler,
     change_thread_visibility_handler,
+)
+from bot.handlers.chat.captains_management import (
+    captains_list_handler,
+    confirm_spam_handler,
+    spam_all_captains_handler,
+    spam_all_groups_handler,
+    spam_captains_handler,
+    spam_groups_handler,
+    update_captains_handler,
 )
 from bot.handlers.chat.user_commands import (
     chat_handler,
@@ -75,4 +84,17 @@ chat_router.callback_query.register(
 chat_router.callback_query.register(
     confirm_chat_delete_handler,
     ChatCallback.filter(F.action == "confirm_delete_chat"),
+)
+
+chat_router.message.register(captains_list_handler, Command("captains_list"))
+chat_router.message.register(update_captains_handler, Command("update_captains"))
+
+chat_router.message.register(spam_groups_handler, Command("spam_groups"))
+chat_router.message.register(spam_captains_handler, Command("spam_captains"))
+chat_router.message.register(spam_all_groups_handler, Command("spam_all_groups"))
+chat_router.message.register(spam_all_captains_handler, Command("spam_all_captains"))
+
+chat_router.callback_query.register(
+    confirm_spam_handler,
+    SpamCallback.filter(F.action == "spam"),
 )

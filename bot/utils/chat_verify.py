@@ -1,10 +1,11 @@
 from aiogram.types import Message
 from aiogram.enums import ChatType as TelegramChatType
-from sqlalchemy import select
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ChatType, VisibilityLevel
 from app.db.models.chat import Chat
+from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
 from bot.utils.captains import get_captain
 from bot.utils.format_user import format_user_info
@@ -19,6 +20,7 @@ async def chat_verify(
     message: Message,
     organization: Organization,
     is_bot_added: bool = False,
+    verify_type: ChatType | None = None,
 ) -> None:
     user = message.from_user
     if user is None or message.bot is None:
@@ -46,6 +48,67 @@ async def chat_verify(
                 await message.answer(
                     "❌ Чат не можливо верифікувати, адже він належить до іншої організації"
                 )
+            elif (
+                verify_type and chat_type != verify_type and organization.admin_chat_id
+            ):
+                organization_admins = await message.bot.get_chat_administrators(
+                    organization.admin_chat_id
+                )
+                is_chat_admin = False
+                for admin in organization_admins:
+                    if admin.user.id == user.id:
+                        is_chat_admin = True
+                        break
+
+                if not is_chat_admin:
+                    await message.answer(
+                        "❌ Необхідно бути адміністратором в чаті адміністраторів для виконання команди!"
+                    )
+                    return
+
+                update_chat_stmt = (
+                    update(Chat)
+                    .where(
+                        Chat.id == message.chat.id,
+                        Chat.organization_id == organization.id,
+                    )
+                    .values(
+                        type=verify_type,
+                        visibility_level=VisibilityLevel.INTERNAL,
+                        captain_connected_thread=(
+                            message.message_thread_id
+                            if verify_type == ChatType.EXTERNAL
+                            and message.chat.is_forum
+                            else None
+                        ),
+                        pin_requests=False,
+                        tag_on_requests=None,
+                    )
+                )
+                await db.execute(update_chat_stmt)
+
+                if verify_type == ChatType.EXTERNAL:
+                    delete_threads_stmt = delete(ChatThread).where(
+                        ChatThread.chat_id == message.chat.id
+                    )
+                    await db.execute(delete_threads_stmt)
+
+                await db.commit()
+
+                chat_verify_type = (
+                    "зовнішньої" if verify_type == ChatType.EXTERNAL else "внутрішньої"
+                )
+                await message.answer(
+                    f"Чат {message.chat.title} верифіковано як для {chat_verify_type} роботи {organization.title}"
+                )
+                await message.bot.send_message(
+                    organization.admin_chat_id,
+                    f"{format_user_info(user)} змінив тип чату {message.chat.title} на для {chat_verify_type} роботи",
+                    message_thread_id=organization.admin_chat_thread_id,
+                )
+
+                chat_type = verify_type
+
             elif not is_bot_added:
                 await message.answer("Чат вже верифікований!")
 
@@ -67,96 +130,121 @@ async def chat_verify(
             is_chat_admin = False
             for admin in organization_admins:
                 if admin.user.id == user.id:
-                    # is_chat_admin = True
+                    is_chat_admin = True
                     break
 
             if is_chat_admin:
+                if verify_type is None:
+                    verify_type = ChatType.INTERNAL
+
                 db.add(
                     Chat(
                         id=message.chat.id,
                         organization_id=organization.id,
                         title=message.chat.title,
-                        type=ChatType.INTERNAL,
+                        type=verify_type,
+                        captain_connected_thread=(
+                            message.message_thread_id
+                            if verify_type == ChatType.EXTERNAL
+                            and message.chat.is_forum
+                            else None
+                        ),
                         visibility_level=VisibilityLevel.INTERNAL,
                     )
                 )
                 await db.commit()
+                chat_verify_type = (
+                    "зовнішньої" if verify_type == ChatType.EXTERNAL else "внутрішньої"
+                )
                 await message.answer(
-                    f"Чат {message.chat.title} верифіковано як для внутрішньої роботи {organization.title}"
+                    f"Чат {message.chat.title} верифіковано як для {chat_verify_type} роботи {organization.title}"
                 )
                 await message.bot.send_message(
                     organization.admin_chat_id,
-                    f"{format_user_info(user)} верифікував чат {message.chat.title} як для внутрішньої роботи",
+                    f"{format_user_info(user)} верифікував чат {message.chat.title} як для {chat_verify_type} роботи",
                     message_thread_id=organization.admin_chat_thread_id,
                 )
-                await set_bot_commands_for_internal_chat(
-                    message.bot,
-                    message.chat.id,
-                    is_forum=bool(message.chat.is_forum),
+
+                if verify_type == ChatType.EXTERNAL:
+                    await set_bot_commands_for_external_chat(
+                        message.bot,
+                        message.chat.id,
+                    )
+                else:
+                    await set_bot_commands_for_internal_chat(
+                        message.bot,
+                        message.chat.id,
+                        is_forum=bool(message.chat.is_forum),
+                    )
+
+                return
+
+            if verify_type == ChatType.INTERNAL:
+                await message.answer(
+                    "❌ Необхідно бути адміністратором в чаті адміністраторів для виконання команди!"
                 )
                 return
 
-            else:
-                captain = await get_captain(db, organization.id, user.id, user.username)
-                if captain:
-                    if captain.connected_chat_id:
-                        if not is_bot_added:
-                            if captain.connected_chat_id == message.chat.id:
-                                if message.chat.is_forum:
-                                    await message.answer(
-                                        f"Чат групи {captain.chat_title} вже під'єднано. Якщо бажаєте щоб бот надсилав повідомлення в іншу гілку, пропишіть в ній /migrate"
-                                    )
-                                else:
-                                    await message.answer(
-                                        f"Чат групи {captain.chat_title} вже під'єднано."
-                                    )
+            captain = await get_captain(db, organization.id, user.id, user.username)
+            if captain:
+                if captain.connected_chat_id:
+                    if not is_bot_added:
+                        if captain.connected_chat_id == message.chat.id:
+                            if message.chat.is_forum:
+                                await message.answer(
+                                    f"Чат групи {captain.chat_title} вже під'єднано. Якщо бажаєте щоб бот надсилав повідомлення в іншу гілку, пропишіть в ній /migrate"
+                                )
                             else:
                                 await message.answer(
-                                    "Ви вже під'єднали чат своєї групи, якщо бажаєте мігрувати чат сюди, то надішліть команду /migrate"
+                                    f"Чат групи {captain.chat_title} вже під'єднано."
                                 )
+                        else:
+                            await message.answer(
+                                "Ви вже під'єднали чат своєї групи, якщо бажаєте мігрувати чат сюди, то надішліть команду /migrate"
+                            )
 
-                        return
+                    return
 
-                    db.add(
-                        Chat(
-                            id=message.chat.id,
-                            organization_id=organization.id,
-                            title=captain.chat_title,
-                            captain_connected_thread=None if is_bot_added else message.message_thread_id,
-                            type=ChatType.EXTERNAL,
-                            visibility_level=VisibilityLevel.INTERNAL,
-                        )
+                db.add(
+                    Chat(
+                        id=message.chat.id,
+                        organization_id=organization.id,
+                        title=captain.chat_title,
+                        captain_connected_thread=(
+                            None if is_bot_added else message.message_thread_id
+                        ),
+                        type=ChatType.EXTERNAL,
+                        visibility_level=VisibilityLevel.INTERNAL,
                     )
-                    captain.connected_chat_id = message.chat.id
-                    await db.commit()
+                )
+                captain.connected_chat_id = message.chat.id
+                await db.commit()
 
-                    if organization.is_admins_accept_messages:
-                        await message.answer(
-                            f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення."
-                        )
-                    else:
-                        await message.answer(
-                            f"Чат {captain.chat_title} верифіковано старостою"
-                        )
-
-                    await message.bot.send_message(
-                        organization.admin_chat_id,
-                        f"Староста {captain.chat_title} {format_user_info(user)} під'єднав чат {message.chat.title}",
-                        message_thread_id=organization.admin_chat_thread_id,
-                    )
-                    await set_bot_commands_for_external_chat(
-                        message.bot, message.chat.id
+                if organization.is_admins_accept_messages:
+                    await message.answer(
+                        f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення."
                     )
                 else:
-                    if is_bot_added:
-                        await message.answer(
-                            f"Це бот {organization.title}. Для верифікації староста або адміністратор організації має підтвердити себе надіславши команду /verify"
-                        )
-                        return
-
                     await message.answer(
-                        "❌ Ви не є старостою чи адміністратором організації. Якщо це не так зверніться до адміністраторів."
+                        f"Чат {captain.chat_title} верифіковано старостою"
                     )
+
+                await message.bot.send_message(
+                    organization.admin_chat_id,
+                    f"Староста {captain.chat_title} {format_user_info(user)} під'єднав чат {message.chat.title}",
+                    message_thread_id=organization.admin_chat_thread_id,
+                )
+                await set_bot_commands_for_external_chat(message.bot, message.chat.id)
+            else:
+                if is_bot_added:
+                    await message.answer(
+                        f"Це бот {organization.title}. Для верифікації староста або адміністратор організації має підтвердити себе надіславши команду /verify"
+                    )
+                    return
+
+                await message.answer(
+                    "❌ Ви не є старостою чи адміністратором організації. Якщо це не так зверніться до адміністраторів."
+                )
 
 
 async def verify_captain_private_chat(

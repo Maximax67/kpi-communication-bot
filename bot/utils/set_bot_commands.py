@@ -3,6 +3,7 @@ from aiogram.types import (
     BotCommand,
     BotCommandScopeAllPrivateChats,
     BotCommandScopeChat,
+    BotCommandScopeChatAdministrators,
 )
 
 
@@ -44,7 +45,7 @@ async def set_bot_commands_for_admin_chat(
         # Ban management
         BotCommand(command="ban", description="Заблокувати користувача"),
         BotCommand(command="unban", description="Розблокувати користувача"),
-        BotCommand(command="ban_list", description="Список заблокованих"),
+        BotCommand(command="ban_list", description="Список заблокованих користувачів"),
         # Captain management
         BotCommand(
             command="set_captains_spreadsheet", description="Встановити таблицю старост"
@@ -64,8 +65,8 @@ async def set_bot_commands_for_admin_chat(
         # Request management
         BotCommand(command="send", description="Надіслати повідомлення"),
         BotCommand(command="send_task", description="Надіслати завдання"),
-        BotCommand(command="pending", description="Переглянути незавершені запити"),
-        BotCommand(command="pending_chat", description="Запити чату"),
+        BotCommand(command="pending", description="Незавершені запити"),
+        BotCommand(command="pending_chat", description="Незавершені запити чату"),
     ]
 
     if is_root_organization:
@@ -90,13 +91,20 @@ async def set_bot_commands_for_admin_chat(
 async def set_bot_commands_for_internal_chat(
     bot: Bot, chat_id: int, is_forum: bool = False
 ) -> None:
-    """Set commands available in internal (group) chats"""
-    commands = [
-        # User commands (available to all members)
+    user_commands = [
+        # Chat info
         BotCommand(command="members", description="Учасники чату"),
         BotCommand(command="groups", description="Список груп"),
         BotCommand(command="group_members", description="Учасники груп"),
         BotCommand(command="chat", description="Інформація про чат"),
+        # Request management
+        BotCommand(command="send", description="Надіслати повідомлення"),
+        BotCommand(command="send_task", description="Надіслати завдання"),
+        BotCommand(command="pending", description="Незавершені запити"),
+        BotCommand(command="pending_chat", description="Незавершені запити чату"),
+    ]
+
+    admin_commands = [
         # Admin commands
         BotCommand(command="rename_chat", description="Перейменувати чат"),
         BotCommand(command="chat_visibility", description="Видимість чату"),
@@ -107,17 +115,21 @@ async def set_bot_commands_for_internal_chat(
         ),
         BotCommand(command="set_chat_tags", description="Встановити теги чату"),
         BotCommand(command="delete_chat_tags", description="Видалити теги чату"),
-        # Request management
-        BotCommand(command="send", description="Надіслати повідомлення"),
-        BotCommand(command="send_task", description="Надіслати завдання"),
-        BotCommand(command="pending", description="Переглянути незавершені запити"),
-        BotCommand(command="pending_chat", description="Запити чату"),
+        # Spam groups and captains
+        BotCommand(command="spam_groups", description="Розсилка до груп"),
+        BotCommand(command="spam_captains", description="Розсилка до старост"),
+        BotCommand(command="spam_all_groups", description="Розсилка до всіх груп"),
+        BotCommand(command="spam_all_captains", description="Розсилка до всіх старост"),
+        BotCommand(command="captains_list", description="Вивести список старост"),
+        BotCommand(
+            command="update_captains", description="Оновити дані з таблиці старост"
+        ),
     ]
 
     if is_forum:
-        commands.extend(
+        user_commands.append(BotCommand(command="threads", description="Гілки чату"))
+        admin_commands.extend(
             [
-                BotCommand(command="threads", description="Гілки чату"),
                 BotCommand(command="set_thread", description="Додати гілку"),
                 BotCommand(command="delete_thread", description="Видалити гілку"),
                 BotCommand(command="rename_thread", description="Перейменувати гілку"),
@@ -139,9 +151,15 @@ async def set_bot_commands_for_internal_chat(
             ]
         )
 
+    admin_commands.extend(user_commands)
+
     await bot.set_my_commands(
-        commands=commands,
+        commands=user_commands,
         scope=BotCommandScopeChat(chat_id=chat_id),
+    )
+    await bot.set_my_commands(
+        commands=admin_commands,
+        scope=BotCommandScopeChatAdministrators(chat_id=chat_id),
     )
 
 
