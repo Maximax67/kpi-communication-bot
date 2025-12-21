@@ -1,2 +1,5 @@
 ruff
 mypy
+types-cachetools
+pandas-stubs
+types-openpyxl
