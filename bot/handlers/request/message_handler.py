@@ -4,6 +4,7 @@ from aiogram import Bot
 from aiogram.types import Message, ReactionTypeEmoji, User, BufferedInputFile, MessageId
 from aiogram.enums import ChatType as TelegramChatType
 from sqlalchemy import and_, literal, or_, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.crypto import crypto
@@ -393,6 +394,93 @@ async def send_message(
                 parse_mode="HTML",
                 reply_to_message_id=message.message_id,
             )
+    elif message_type == MessageType.INFO_REPLY:
+        find_chat_stmt = (
+            select(Chat)
+            .options(joinedload(Chat.organization))
+            .where(Chat.id.in_((message.chat.id, to_send_chat_id)))
+        )
+        chats_result = await db.execute(find_chat_stmt)
+        chats = chats_result.scalars().all()
+
+        origin: Chat | Organization | None = None
+        destination: Chat | Organization | None = None
+
+        if chats:
+            if len(chats) == 1:
+                one_chat = chats[0]
+                if one_chat.id == message.chat.id:
+                    origin = one_chat
+                else:
+                    destination = one_chat
+            else:
+                origin, destination = chats
+                if destination.id == message.chat.id:
+                    origin, destination = destination, origin
+
+        print(origin, destination)
+
+        if destination is None:
+            if origin is None:
+                find_orgs_stmt = select(Organization).where(
+                    Organization.admin_chat_id.in_((message.chat.id, to_send_chat_id))
+                )
+                organizations_res = await db.execute(find_orgs_stmt)
+                organizations = organizations_res.scalars().all()
+
+                if len(organizations) == 1:
+                    one_org = organizations[0]
+                    if one_org.admin_chat_id == message.chat.id:
+                        origin = one_org
+                    else:
+                        destination = one_org
+                elif len(organizations) == 2:
+                    origin, destination = organizations
+                    if destination.admin_chat_id == message.chat.id:
+                        origin, destination = destination, origin
+
+            else:
+                find_org_dest_stmt = select(Organization).where(
+                    Organization.admin_chat_id == to_send_chat_id
+                )
+                org_dest_res = await db.execute(find_org_dest_stmt)
+                destination = org_dest_res.scalar_one_or_none()
+        elif origin is None:
+            find_org_origin_stmt = select(Organization).where(
+                Organization.admin_chat_id == message.chat.id
+            )
+            find_org_origin_res = await db.execute(find_org_origin_stmt)
+            origin = find_org_origin_res.scalar_one_or_none()
+
+        print(origin, destination)
+
+        if destination and (
+            isinstance(destination, Organization)
+            or destination.type != ChatType.EXTERNAL
+        ):
+            service_text = f"ℹ️ Реплай від {format_user_info_html(user)}"
+
+            if origin:
+                service_text += "\n"
+
+                if isinstance(origin, Organization):
+                    service_text += f"Адміністратори {html.escape(origin.title)}"
+                else:
+                    if not is_within_organization:
+                        service_text += f"{html.escape(origin.organization.title)}, "
+
+                    if origin.type == ChatType.EXTERNAL:
+                        service_text += "Чат групи "
+
+                    service_text += html.escape(origin.title)
+
+            service_msg = await bot.send_message(
+                to_send_chat_id,
+                service_text,
+                message_thread_id=corrected_to_send_thread_id,
+                reply_to_message_id=reply_to_message_id,
+                parse_mode="HTML",
+            )
 
     sent_msg_id = await copy_message(
         message,
@@ -471,15 +559,6 @@ async def process_reply_request(
     if not message.from_user or not message.bot or not message.reply_to_message:
         return False
 
-    to_send_chat_id: int | None = None
-    to_send_thread_id: int | None = None
-    reply_to_msg_id: int | None = None
-    message_type = (
-        MessageType.REQUEST
-        if message.chat.type == TelegramChatType.PRIVATE
-        else MessageType.INFO_REPLY
-    )
-
     stmt = (
         select(MessageDB)
         .where(
@@ -507,6 +586,15 @@ async def process_reply_request(
 
     if request_msg is None:
         return False
+
+    to_send_chat_id: int | None = None
+    to_send_thread_id: int | None = None
+    reply_to_msg_id: int | None = None
+    message_type = (
+        MessageType.REQUEST
+        if message.chat.type == TelegramChatType.PRIVATE
+        else MessageType.INFO_REPLY
+    )
 
     if request_msg.is_within_organization:
         bot = message.bot

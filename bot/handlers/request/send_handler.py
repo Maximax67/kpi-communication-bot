@@ -112,7 +112,10 @@ async def show_available_org_chats(
             await show_available_root_admin_org_chats(db, tg_object, current_type)
             return
     else:
-        chats_stmt = select(Chat).where(Chat.organization_id == organization_id)
+        chats_stmt = select(Chat).where(
+            Chat.organization_id == organization_id,
+            Chat.type == ChatType.INTERNAL,
+        )
         chats_result = await db.execute(chats_stmt)
         chats = chats_result.scalars().all()
 
@@ -166,7 +169,8 @@ async def show_available_org_chats(
             )
 
         org_chats_stmt = select(Chat.id, Chat.title).where(
-            Chat.organization_id == organization_id
+            Chat.organization_id == organization_id,
+            Chat.type == ChatType.INTERNAL,
         )
         org_chats_result = await db.execute(org_chats_stmt)
         org_chats = org_chats_result.tuples().all()
@@ -668,7 +672,7 @@ async def select_chat_handler(
             selectinload(Chat.threads),
             joinedload(Chat.organization).joinedload(Organization.bot),
         )
-        .where(Chat.id == chat_id)
+        .where(Chat.id == chat_id, Chat.type == ChatType.INTERNAL)
     )
     chat_result = await db.execute(chat_stmt)
     chat = chat_result.scalar_one_or_none()

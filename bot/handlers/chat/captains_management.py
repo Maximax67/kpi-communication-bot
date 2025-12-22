@@ -185,11 +185,9 @@ async def handle_spam_command(
         return
 
     target_type = (
-        "групи" if spam_type in (SpamType.GROUPS, SpamType.ALL_GROUPS) else "староста"
+        "груп" if spam_type in (SpamType.GROUPS, SpamType.ALL_GROUPS) else "старост"
     )
-    confirmation_text = (
-        f"<b>Підтвердження розсилки до {len(found_targets)} {target_type}</b>\n\n"
-    )
+    confirmation_text = f"<b>Підтвердження розсилки до {target_type}</b>\n\n"
 
     if found_targets:
         confirmation_text += f"<b>Знайдено ({len(found_targets)}):</b>\n"
