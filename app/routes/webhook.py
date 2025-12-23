@@ -79,7 +79,11 @@ async def handle_update(
                     and message.chat.is_forum
                     and (
                         not message.reply_to_message
-                        or not message.reply_to_message.forum_topic_created
+                        or (
+                            not message.reply_to_message.forum_topic_created
+                            and message.reply_to_message.message_id
+                            != message.message_thread_id
+                        )
                     )
                     else ""
                 ),
