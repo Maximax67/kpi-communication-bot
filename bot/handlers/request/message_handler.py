@@ -421,8 +421,6 @@ async def send_message(
                 if destination.id == message.chat.id:
                     origin, destination = destination, origin
 
-        print(origin, destination)
-
         if destination is None:
             if origin is None:
                 find_orgs_stmt = select(Organization).where(
@@ -455,8 +453,6 @@ async def send_message(
             find_org_origin_res = await db.execute(find_org_origin_stmt)
             origin = find_org_origin_res.scalar_one_or_none()
 
-        print(origin, destination)
-
         if destination and (
             isinstance(destination, Organization)
             or destination.type != ChatType.EXTERNAL
@@ -477,13 +473,26 @@ async def send_message(
 
                     service_text += html.escape(origin.title)
 
-            service_msg = await bot.send_message(
-                to_send_chat_id,
-                service_text,
-                message_thread_id=corrected_to_send_thread_id,
-                reply_to_message_id=reply_to_message_id,
-                parse_mode="HTML",
-            )
+            try:
+                service_msg = await bot.send_message(
+                    to_send_chat_id,
+                    service_text,
+                    message_thread_id=corrected_to_send_thread_id,
+                    reply_to_message_id=reply_to_message_id,
+                    parse_mode="HTML",
+                )
+            except Exception as e:
+                if "message thread not found" in str(e):
+                    service_msg = await bot.send_message(
+                        to_send_chat_id,
+                        service_text,
+                        reply_to_message_id=reply_to_message_id,
+                        parse_mode="HTML",
+                    )
+                    corrected_to_send_thread_id = None
+                    to_send_thread_id = None
+                else:
+                    raise
 
     sent_msg_id = await copy_message(
         message,
