@@ -82,7 +82,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
                                 f"Failed to set external chat commands for {organization.title}, chat {chat.id}: {e}"
                             )
 
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.1)
                 except Exception as e:
                     error_msg = f"Chat (ID: {chat.id}): {str(e)}"
                     org_errors.append(error_msg)

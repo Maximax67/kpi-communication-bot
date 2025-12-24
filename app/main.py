@@ -8,11 +8,12 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.limiter import limiter
 from app.core.logger import logger
-from app.core.utils import periodic_data_update, setup_root_organization, startup_bots_setup
 from app.db.session import setup_db
 from app.routes import api
 from app.core.settings import settings
 from bot.root_bot import ROOT_BOT
+from bot.utils.periodic_tasks import periodic_data_update
+from bot.utils.setup import setup_root_organization, startup_bots_setup
 
 
 @asynccontextmanager

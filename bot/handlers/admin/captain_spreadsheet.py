@@ -6,12 +6,12 @@ from sqlalchemy.orm import joinedload
 from app.core.constants import COLUMN_REGEX, RANGE_REGEX, SPREADSHEET_URL_REGEX
 from app.core.enums import ChatType
 from app.core.logger import logger
-from app.core.utils import update_captains_single_spreadhseet
 from app.db.models.captain_spreadsheet import CaptainSpreadsheet
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession
+from bot.utils.captains import update_captains_single_spreadhseet
 
 
 async def set_captains_spreadsheet_handler(

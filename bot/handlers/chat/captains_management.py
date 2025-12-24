@@ -9,7 +9,6 @@ from sqlalchemy.orm import joinedload
 
 from app.core.enums import ChatType, MessageType, SpamType
 from app.core.logger import logger
-from app.core.utils import update_captains_single_spreadhseet
 from app.db.models.captain_spreadsheet import CaptainSpreadsheet
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
@@ -17,6 +16,7 @@ from app.db.models.organization import Organization
 from bot.callback import MainCallback, SpamCallback
 from bot.handlers.request.message_handler import send_message
 from bot.middlewares.db_session import LazyDbSession
+from bot.utils.captains import update_captains_single_spreadhseet
 from bot.utils.chat_permissions import get_chat_if_admin
 from bot.utils.edit_callback_message import edit_callback_message
 from bot.utils.message_splitter import TelegramHTMLSplitter
@@ -341,7 +341,7 @@ async def confirm_spam_handler(
             except Exception as e:
                 failed.append((name, str(e)))
             finally:
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.1)
 
         splitter = TelegramHTMLSplitter(send_func=callback.message.answer)
 

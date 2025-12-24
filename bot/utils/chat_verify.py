@@ -37,6 +37,10 @@ async def chat_verify(
             )
             return
 
+        if not message.chat.title:
+            await message.answer("❌ Не вдалось ідентифікувати назву чату")
+            return
+
         chat_org_stmt = select(Chat.organization_id, Chat.type).where(
             Chat.id == message.chat.id
         )
@@ -98,14 +102,22 @@ async def chat_verify(
                 chat_verify_type = (
                     "зовнішньої" if verify_type == ChatType.EXTERNAL else "внутрішньої"
                 )
-                await message.answer(
-                    f"Чат {message.chat.title} верифіковано як для {chat_verify_type} роботи {organization.title}"
-                )
-                await message.bot.send_message(
-                    organization.admin_chat_id,
-                    f"{format_user_info(user)} змінив тип чату {message.chat.title} на для {chat_verify_type} роботи",
-                    message_thread_id=organization.admin_chat_thread_id,
-                )
+
+                try:
+                    await message.bot.send_message(
+                        organization.admin_chat_id,
+                        f"{format_user_info(user)} змінив тип чату {message.chat.title} на для {chat_verify_type} роботи",
+                        message_thread_id=organization.admin_chat_thread_id,
+                    )
+                except Exception:
+                    pass
+
+                try:
+                    await message.answer(
+                        f"Чат {message.chat.title} верифіковано як для {chat_verify_type} роботи {organization.title}"
+                    )
+                except Exception:
+                    pass
 
                 chat_type = verify_type
 
@@ -137,11 +149,12 @@ async def chat_verify(
                 if verify_type is None:
                     verify_type = ChatType.INTERNAL
 
+                short_title = message.chat.title[:32]
                 db.add(
                     Chat(
                         id=message.chat.id,
                         organization_id=organization.id,
-                        title=message.chat.title,
+                        title=short_title,
                         type=verify_type,
                         captain_connected_thread=(
                             message.message_thread_id
@@ -156,14 +169,22 @@ async def chat_verify(
                 chat_verify_type = (
                     "зовнішньої" if verify_type == ChatType.EXTERNAL else "внутрішньої"
                 )
-                await message.answer(
-                    f"Чат {message.chat.title} верифіковано як для {chat_verify_type} роботи {organization.title}"
-                )
-                await message.bot.send_message(
-                    organization.admin_chat_id,
-                    f"{format_user_info(user)} верифікував чат {message.chat.title} як для {chat_verify_type} роботи",
-                    message_thread_id=organization.admin_chat_thread_id,
-                )
+
+                try:
+                    await message.bot.send_message(
+                        organization.admin_chat_id,
+                        f"{format_user_info(user)} верифікував чат {short_title} як для {chat_verify_type} роботи",
+                        message_thread_id=organization.admin_chat_thread_id,
+                    )
+                except Exception:
+                    pass
+
+                try:
+                    await message.answer(
+                        f"Чат {short_title} верифіковано як для {chat_verify_type} роботи {organization.title}"
+                    )
+                except Exception:
+                    pass
 
                 if verify_type == ChatType.EXTERNAL:
                     await set_bot_commands_for_external_chat(
@@ -220,20 +241,27 @@ async def chat_verify(
                 captain.connected_chat_id = message.chat.id
                 await db.commit()
 
-                if organization.is_admins_accept_messages:
-                    await message.answer(
-                        f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення."
-                    )
-                else:
-                    await message.answer(
-                        f"Чат {captain.chat_title} верифіковано старостою"
-                    )
+                try:
+                    if organization.is_admins_accept_messages:
+                        await message.answer(
+                            f"Чат {captain.chat_title} верифіковано старостою. Ви можете зв'язуватись з модераторами {organization.title} надіславши команду /send з реплаєм на бажане повідомлення."
+                        )
+                    else:
+                        await message.answer(
+                            f"Чат {captain.chat_title} верифіковано старостою"
+                        )
+                except Exception:
+                    pass
 
-                await message.bot.send_message(
-                    organization.admin_chat_id,
-                    f"Староста {captain.chat_title} {format_user_info(user)} під'єднав чат {message.chat.title}",
-                    message_thread_id=organization.admin_chat_thread_id,
-                )
+                try:
+                    await message.bot.send_message(
+                        organization.admin_chat_id,
+                        f"Староста {captain.chat_title} {format_user_info(user)} під'єднав чат {message.chat.title}",
+                        message_thread_id=organization.admin_chat_thread_id,
+                    )
+                except Exception:
+                    pass
+
                 await set_bot_commands_for_external_chat(message.bot, message.chat.id)
             else:
                 if is_bot_added:

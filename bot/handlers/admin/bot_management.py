@@ -11,6 +11,7 @@ from app.core.enums import CryptoInfo
 from app.core.logger import logger
 from app.db.models.telegram_bot import TelegramBot
 from bot.middlewares.db_session import LazyDbSession
+from bot.middlewares.organization import OrganizationCache
 from bot.root_bot import ROOT_BOT
 from bot.utils.format_user import format_user_info
 from bot.utils.get_organization import get_organization_from_message
@@ -21,6 +22,7 @@ from bot.utils.set_webhook import init_webhook
 async def set_bot_handler(
     message: Message,
     lazy_db: LazyDbSession,
+    organization_cache: OrganizationCache,
 ) -> None:
     if not message.text or not message.from_user:
         return
@@ -109,6 +111,8 @@ async def set_bot_handler(
 
     await db.commit()
 
+    organization_cache.update(organization)
+
     try:
         await init_webhook(temp_bot, secret_token)
         await set_bot_commands_for_private_chats(temp_bot)
@@ -141,6 +145,7 @@ async def set_bot_handler(
 async def delete_bot_handler(
     message: Message,
     lazy_db: LazyDbSession,
+    organization_cache: OrganizationCache,
 ) -> None:
     if not message.from_user:
         return
@@ -187,6 +192,7 @@ async def delete_bot_handler(
     await db.delete(organization.bot)
     await db.commit()
 
+    organization_cache.update(organization)
     remove_telegram_bot(organization.bot.id)
 
     admin_message = (
