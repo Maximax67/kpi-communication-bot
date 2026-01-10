@@ -11,7 +11,6 @@ from bot.middlewares.organization import OrganizationCache
 from bot.root_bot import ROOT_BOT
 from bot.utils.captains import get_captain
 from bot.utils.format_user import format_user_info
-from bot.utils.set_bot_commands import remove_bot_commands
 
 
 async def bot_removed_handler(
@@ -74,8 +73,6 @@ async def bot_removed_handler(
 
     await db.delete(chat_from_kicked)
     await db.commit()
-
-    await remove_bot_commands(update.bot, update.chat.id)
 
     await update.bot.send_message(
         organization.admin_chat_id,

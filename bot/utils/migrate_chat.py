@@ -77,7 +77,11 @@ async def migrate_chat(
         await message.answer("✅ Чат групи успішно мігровано")
 
         await set_bot_commands_for_external_chat(message.bot, message.chat.id)
-        await remove_bot_commands(message.bot, old_chat_id)
+
+        try:
+            await remove_bot_commands(message.bot, old_chat_id)
+        except Exception:
+            pass
 
 
 async def auto_migrate(message: TelegramMessage, lazy_db: LazyDbSession) -> None:
