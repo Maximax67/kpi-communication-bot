@@ -1,6 +1,6 @@
 from aiogram.types import Message as TelegramMessage
 from aiogram.enums import ChatType
-from sqlalchemy import select, update
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.chat import Chat
@@ -32,46 +32,35 @@ async def migrate_chat(
             await message.answer("❌ Команда не може бути викликана в чаті модераторів")
             return
 
-        chat_stmt = select(Chat).where(
-            Chat.id == message.chat.id, Chat.organization_id == organization.id
+        captain = await get_captain(
+            db, organization.id, user.id, user.username, load_chat=True
         )
-        chat_result = await db.execute(chat_stmt)
-        chat_to_migrate = chat_result.scalar_one_or_none()
-
-        if chat_to_migrate is None:
-            await message.answer(
-                "❌ Цей чат не прив'язаний до бота. Староста має верифікувати чат командою /verify"
-            )
-            return
-
-        captain = await get_captain(db, organization.id, user.id, user.username)
         if captain is None:
             await message.answer("❌ Команда /migrate призначена лише для старост")
             return
 
-        if captain.connected_chat_id is None:
+        if captain.chat is None:
             await message.answer(
-                "❌ Ви ще не прив'язали чат своєї групи. Просто надішліть команду /verify у чат, який бажаєте зробити чатом вашої групи. Якщо чат має гілки, то повідомлення будуть надходити в гілку, де була викликана ця команда."
+                "❌ Ви ще не прив'язали чат своєї групи, отже міграція не можлива. Якщо бажаєте прив'язати цей чат, надішліть команду /verify. Якщо чат має гілки, то повідомлення будуть надходити в гілку, де була викликана ця команда."
             )
             return
 
         if captain.connected_chat_id == message.chat.id:
             if (
                 message.chat.is_forum
-                and message.message_thread_id
-                == chat_to_migrate.captain_connected_thread
+                and message.message_thread_id == captain.chat.captain_connected_thread
             ):
                 await message.answer("❌ Чат групи вже підв'язаний до цієї гілки")
                 return
 
-            chat_to_migrate.captain_connected_thread = message.message_thread_id
+            captain.chat.captain_connected_thread = message.message_thread_id
             await db.commit()
             await message.answer("✅ Успішно мігровано на цю гілку чату")
             return
 
-        old_chat_id = chat_to_migrate.id
-        chat_to_migrate.id = message.chat.id
-        chat_to_migrate.captain_connected_thread = message.message_thread_id
+        old_chat_id = captain.chat.id
+        captain.chat.id = message.chat.id
+        captain.chat.captain_connected_thread = message.message_thread_id
 
         await db.commit()
         await message.answer("✅ Чат групи успішно мігровано")

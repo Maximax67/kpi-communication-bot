@@ -25,6 +25,7 @@ async def get_captain(
     organization_id: int,
     user_id: int | None = None,
     username: str | None = None,
+    load_chat: bool = False,
 ) -> ChatCaptain | None:
     if user_id is None and username is None:
         raise ValueError("At least one param should be provided: user_id, username")
@@ -45,6 +46,10 @@ async def get_captain(
             conditions.append(or_(*or_conditions))
 
     q = select(ChatCaptain).where(*conditions).limit(1)
+
+    if load_chat:
+        q.options(joinedload(ChatCaptain.chat))
+
     result = await db.execute(q)
 
     return result.scalar_one_or_none()
