@@ -3,7 +3,7 @@ import html
 from io import BytesIO
 from aiogram import Bot
 import pandas as pd
-from sqlalchemy import delete, insert, or_, select
+from sqlalchemy import delete, func, insert, or_, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,7 +37,9 @@ async def get_captain(
         or_conditions.append(ChatCaptain.connected_user_id == user_id)
 
     if username is not None:
-        or_conditions.append(ChatCaptain.validated_username == username)
+        or_conditions.append(
+            func.lower(ChatCaptain.validated_username) == username.lower()
+        )
 
     if or_conditions:
         if len(or_conditions) == 1:
@@ -123,7 +125,10 @@ async def update_captains_single_spreadhseet(
             del current_captains[title]
             conn_user = existing_captain.connected_user
             if conn_user:
-                if conn_user.username != username:
+                if (
+                    conn_user.username
+                    and conn_user.username.lower() != username.lower()
+                ):
                     if existing_captain.validated_username == username:
                         remind_changed_username.append(existing_captain)
                         continue
