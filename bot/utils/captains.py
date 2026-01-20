@@ -48,7 +48,7 @@ async def get_captain(
     q = select(ChatCaptain).where(*conditions).limit(1)
 
     if load_chat:
-        q.options(joinedload(ChatCaptain.chat))
+        q = q.options(joinedload(ChatCaptain.chat))
 
     result = await db.execute(q)
 
