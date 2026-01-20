@@ -55,7 +55,19 @@ async def migrate_chat(
 
             captain.chat.captain_connected_thread = message.message_thread_id
             await db.commit()
-            await message.answer("✅ Успішно мігровано на цю гілку чату")
+
+            try:
+                await message.answer("✅ Успішно мігровано на цю гілку чату")
+            except Exception as e:
+                if str(e) != "Telegram server says - Bad Request: TOPIC_CLOSED":
+                    raise
+
+                await message.bot.send_message(
+                    message.chat.id,
+                    "✅ Успішно мігровано в задану гілку, однак гілка закрита для повідомлень. "
+                    "Зробіть бота адміністратором та дайте право Topic Management або відкрийте гілку для повідомлень.",
+                )
+
             return
 
         old_chat_id = captain.chat.id
@@ -63,7 +75,6 @@ async def migrate_chat(
         captain.chat.captain_connected_thread = message.message_thread_id
 
         await db.commit()
-        await message.answer("✅ Чат групи успішно мігровано")
 
         await set_bot_commands_for_external_chat(message.bot, message.chat.id)
 
@@ -71,6 +82,21 @@ async def migrate_chat(
             await remove_bot_commands(message.bot, old_chat_id)
         except Exception:
             pass
+
+        try:
+            await message.answer("✅ Чат групи успішно мігровано")
+        except Exception as e:
+            if (
+                message.message_thread_id is not None
+                and str(e) != "Telegram server says - Bad Request: TOPIC_CLOSED"
+            ):
+                raise
+
+            await message.bot.send_message(
+                message.chat.id,
+                "✅ Успішно мігровано в новий чат, однак гілка закрита для повідомлень. "
+                "Зробіть бота адміністратором та дайте право Topic Management або відкрийте гілку для повідомлень.",
+            )
 
 
 async def auto_migrate(message: TelegramMessage, lazy_db: LazyDbSession) -> None:
