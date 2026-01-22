@@ -427,7 +427,7 @@ async def captains_list_handler(
             username_info = f"@{html.escape(captain.validated_username)}"
 
         await splitter.add(
-            f"<b>{html.escape(captain.chat_title)}</b>\n"
+            f"{html.escape(captain.chat_title)}\n"
             f"├ Чат: {chat_linked_text}\n"
             f"└ {user_verified_emoji} {username_info}\n"
         )

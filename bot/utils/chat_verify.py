@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ChatType, VisibilityLevel
 from app.db.models.chat import Chat
+from app.db.models.chat_captain import ChatCaptain
 from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
 from bot.utils.captains import get_captain
@@ -92,10 +93,26 @@ async def chat_verify(
                 await db.execute(update_chat_stmt)
 
                 if verify_type == ChatType.EXTERNAL:
-                    delete_threads_stmt = delete(ChatThread).where(
-                        ChatThread.chat_id == message.chat.id
+                    await db.execute(
+                        delete(ChatThread).where(ChatThread.chat_id == message.chat.id)
                     )
-                    await db.execute(delete_threads_stmt)
+                    await db.execute(
+                        update(ChatCaptain)
+                        .where(
+                            ChatCaptain.organization_id == organization.id,
+                            ChatCaptain.chat_title == message.chat.title,
+                        )
+                        .values(connected_chat_id=message.chat.id)
+                    )
+                else:
+                    await db.execute(
+                        update(ChatCaptain)
+                        .where(
+                            ChatCaptain.organization_id == organization.id,
+                            ChatCaptain.connected_chat_id == message.chat.id,
+                        )
+                        .values(connected_chat_id=None)
+                    )
 
                 await db.commit()
 
@@ -122,7 +139,10 @@ async def chat_verify(
                 chat_type = verify_type
 
             elif not is_bot_added:
-                await message.answer("Чат вже верифікований!")
+                try:
+                    await message.answer("Чат вже верифікований!")
+                except Exception:
+                    pass
 
             if chat_type == ChatType.INTERNAL:
                 await set_bot_commands_for_internal_chat(

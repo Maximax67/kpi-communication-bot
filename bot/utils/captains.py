@@ -14,6 +14,7 @@ from app.core.constants import USERNAME_REGEX
 from app.core.enums import CryptoInfo
 from app.core.google_drive import download_file
 from app.db.models.captain_spreadsheet import CaptainSpreadsheet
+from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
 from app.db.models.organization import Organization
 from bot.root_bot import ROOT_BOT
@@ -154,6 +155,19 @@ async def update_captains_single_spreadhseet(
     for captain in current_captains.values():
         removed_captains.append(captain)
 
+    chat_id_by_title: dict[str, int] = {}
+
+    if new_captains:
+        titles = [c.chat_title for c in new_captains]
+        chat_select_stmt = select(Chat.id, Chat.title).where(
+            Chat.organization_id == organization.id,
+            Chat.title.in_(titles),
+        )
+        chat_select_result = await db.execute(chat_select_stmt)
+        chat_id_by_title = {
+            title: chat_id for chat_id, title in chat_select_result.tuples().all()
+        }
+
     if (
         new_captains
         or removed_captains
@@ -176,6 +190,7 @@ async def update_captains_single_spreadhseet(
                         "organization_id": c.organization_id,
                         "validated_username": c.validated_username,
                         "chat_title": c.chat_title,
+                        "connected_chat_id": chat_id_by_title.get(c.chat_title),
                     }
                     for c in new_captains
                 ],

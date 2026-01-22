@@ -37,7 +37,7 @@ async def organizations_handler(message: Message, lazy_db: LazyDbSession) -> Non
         admin_emoji = "🛡️" if org.admin_chat_id else "❌"
         visibility_emoji = "🔒" if org.is_private else "🌐"
 
-        line = f"{bot_emoji}{admin_emoji}{visibility_emoji} {title} "
+        line = f"{bot_emoji}{admin_emoji}{visibility_emoji} {title}"
         message_lines.append(line)
 
     message_to_send = "\n".join(message_lines)
