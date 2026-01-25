@@ -33,6 +33,7 @@ async def request_status_handler(
         MessageDB.destination_chat_id == callback.message.chat.id,
         MessageDB.destination_message_id == callback.message.message_id,
         MessageDB.type == MessageType.SERVICE,
+        MessageDB.status.is_not(None),
     )
     result = await db.execute(stmt)
     service_msg = result.scalar_one_or_none()

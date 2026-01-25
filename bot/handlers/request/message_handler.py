@@ -259,6 +259,7 @@ async def send_message(
     feedback_send_destination: str | None = None,
     user: User | None = None,
     bot: Bot | None = None,
+    is_no_status_request: bool = False,
 ) -> int | None:
     if not message.from_user or not message.bot or message_type == MessageType.SERVICE:
         return None
@@ -287,8 +288,6 @@ async def send_message(
     corrected_to_send_thread_id = to_send_thread_id if to_send_thread_id != 1 else None
 
     if message_type in (MessageType.REQUEST, MessageType.TASK):
-        label = get_status_label(MessageStatus.NEW)
-
         if message_type == MessageType.REQUEST:
             service_text = f"#R{user.id}, {format_user_info_html(user, False)}"
         else:
@@ -297,9 +296,16 @@ async def send_message(
         if additional_service_text:
             service_text += f"\n{additional_service_text}"
 
-        service_text += f"\n\n{label}"
-
-        keyboard = get_request_status_keyboard(MessageStatus.NEW)
+        if is_no_status_request:
+            status = None
+            keyboard = None
+            is_status_reference = None
+        else:
+            status = MessageStatus.NEW
+            label = get_status_label(MessageStatus.NEW)
+            service_text += f"\n\n{label}"
+            keyboard = get_request_status_keyboard(MessageStatus.NEW)
+            is_status_reference = False
 
         service_msg = await bot.send_message(
             to_send_chat_id,
@@ -321,14 +327,18 @@ async def send_message(
                 destination_message_id=service_msg.message_id,
                 is_within_organization=is_within_organization,
                 type=MessageType.SERVICE,
-                status=MessageStatus.NEW,
-                is_status_reference=False,
+                status=status,
+                is_status_reference=is_status_reference,
                 text=service_text,
             )
         )
 
         if message_type == MessageType.TASK:
-            text = f"{label}\nЗавдання надіслано"
+            if is_no_status_request:
+                text = "Завдання надіслано"
+            else:
+                text = f"{label}\nЗавдання надіслано"
+
             if feedback_send_destination:
                 text += f" {feedback_send_destination}"
 
@@ -337,22 +347,24 @@ async def send_message(
                 parse_mode="HTML",
                 reply_to_message_id=message.message_id,
             )
-            db.add(
-                MessageDB(
-                    user_id=user.id,
-                    chat_id=to_send_chat_id,
-                    thread_id=to_send_thread_id,
-                    message_id=service_msg.message_id,
-                    destination_chat_id=message.chat.id,
-                    destination_thread_id=corrected_thread_id,
-                    destination_message_id=feedback_message.message_id,
-                    is_within_organization=is_within_organization,
-                    type=MessageType.SERVICE,
-                    status=MessageStatus.NEW,
-                    is_status_reference=True,
-                    text=text,
+
+            if not is_no_status_request:
+                db.add(
+                    MessageDB(
+                        user_id=user.id,
+                        chat_id=to_send_chat_id,
+                        thread_id=to_send_thread_id,
+                        message_id=service_msg.message_id,
+                        destination_chat_id=message.chat.id,
+                        destination_thread_id=corrected_thread_id,
+                        destination_message_id=feedback_message.message_id,
+                        is_within_organization=is_within_organization,
+                        type=MessageType.SERVICE,
+                        status=MessageStatus.NEW,
+                        is_status_reference=True,
+                        text=text,
+                    )
                 )
-            )
         elif feedback_send_destination:
             await message.answer(
                 f"Надіслано {feedback_send_destination}", parse_mode="HTML"
@@ -782,6 +794,20 @@ async def send_admin_request(
 
     additional_info = await get_captain_or_chat_info(db, message.from_user.id)
 
+    last_request_stmt = (
+        select(MessageDB.status)
+        .where(
+            MessageDB.chat_id == message.from_user.id,
+            MessageDB.destination_chat_id == organization.admin_chat_id,
+            MessageDB.type == MessageType.SERVICE,
+            MessageDB.status.is_not(None),
+        )
+        .order_by(MessageDB.created_at.desc())
+        .limit(1)
+    )
+    last_request_result = await db.execute(last_request_stmt)
+    last_request_status = last_request_result.scalar_one_or_none()
+
     await send_message(
         db,
         message,
@@ -790,6 +816,7 @@ async def send_admin_request(
         None,
         MessageType.REQUEST,
         additional_info,
+        is_no_status_request=last_request_status == MessageStatus.NEW,
     )
     await put_reaction(message)
 

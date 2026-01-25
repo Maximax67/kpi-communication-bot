@@ -14,6 +14,7 @@ class Message(Base, TimestampMixin):
             "destination_chat_id",
             "destination_message_id",
         ),
+        Index("ix_messages_chat_destination_chat", "chat_id", "destination_chat_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
