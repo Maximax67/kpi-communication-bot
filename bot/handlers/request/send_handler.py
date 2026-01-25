@@ -18,6 +18,7 @@ from bot.middlewares.ban_middleware import BanController
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.edit_callback_message import edit_callback_message
 from bot.utils.get_bot import get_organization_bot
+from bot.utils.is_no_status_request import is_no_status_request
 
 
 async def change_callback_or_message(
@@ -462,6 +463,7 @@ async def send_handler(
         return
 
     destination_text = f"<b>{html.escape(organization.title)}</b>"
+    is_no_status = await is_no_status_request(db, message, organization.admin_chat_id)
 
     await send_message(
         db,
@@ -473,6 +475,7 @@ async def send_handler(
         service_text,
         destination_text,
         message.from_user,
+        is_no_status_request=is_no_status,
     )
     await put_reaction(message.reply_to_message)
 

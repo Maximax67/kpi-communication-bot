@@ -19,6 +19,7 @@ from app.db.models.organization import Organization
 from app.db.models.telegram_bot import TelegramBot
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.format_user import format_user_info_html
+from bot.utils.is_no_status_request import is_no_status_request
 from bot.utils.request_statuses import get_request_status_keyboard, get_status_label
 
 
@@ -685,7 +686,6 @@ async def process_reply_request(
                     MessageDB.message_id == request_msg.message_id,
                     MessageDB.type == MessageType.SERVICE,
                     MessageDB.status != MessageStatus.COMPLETED,
-                    MessageDB.status.is_not(None),
                     MessageDB.text.is_not(None),
                 )
                 .limit(1)
@@ -693,55 +693,82 @@ async def process_reply_request(
             service_result = await db.execute(service_stmt)
             service_message = service_result.scalar_one_or_none()
             if service_message and service_message.text:
-                service_message.status = MessageStatus.COMPLETED
-                service_message.status_changed_by_user = message.from_user.id
+                if service_message.status is None:
+                    service_previous_stmt = (
+                        select(MessageDB)
+                        .where(
+                            MessageDB.chat_id == request_msg.chat_id,
+                            MessageDB.destination_chat_id
+                            == service_message.destination_chat_id,
+                            MessageDB.type == MessageType.SERVICE,
+                            MessageDB.status.is_not(None),
+                            MessageDB.text.is_not(None),
+                        )
+                        .order_by(MessageDB.created_at.desc())
+                        .limit(1)
+                    )
+                    service_previous_result = await db.execute(
+                        service_previous_stmt
+                    )
+                    service_message = service_previous_result.scalar_one_or_none()
 
-                new_label = get_status_label(MessageStatus.COMPLETED)
-                old_service_text = service_message.text.rsplit("\n", 1)[0]
-                user_info = (
-                    f"@{message.from_user.username}"
-                    if message.from_user.username
-                    else message.from_user.full_name
-                )
-                updated_text = f"{old_service_text}\n{new_label} [{user_info}]"
-                service_message.text = updated_text
+                if (
+                    service_message
+                    and service_message.status is not None
+                    and service_message.status != MessageStatus.COMPLETED
+                    and service_message.text
+                ):
+                    service_message.status = MessageStatus.COMPLETED
+                    service_message.status_changed_by_user = message.from_user.id
 
-                service_msg_ref_stmt = select(MessageDB).where(
-                    MessageDB.chat_id == service_message.destination_chat_id,
-                    MessageDB.message_id == service_message.destination_message_id,
-                    MessageDB.type == MessageType.SERVICE,
-                    MessageDB.status.is_not(None),
-                    MessageDB.is_status_reference.is_(True),
-                )
-                service_msg_ref_res = await db.execute(service_msg_ref_stmt)
-                service_msg_reference = service_msg_ref_res.scalar_one_or_none()
+                    new_label = get_status_label(MessageStatus.COMPLETED)
+                    old_service_text = service_message.text.rsplit("\n", 1)[0]
+                    user_info = (
+                        f"@{message.from_user.username}"
+                        if message.from_user.username
+                        else message.from_user.full_name
+                    )
+                    updated_text = f"{old_service_text}\n{new_label} [{user_info}]"
+                    service_message.text = updated_text
 
-                if service_msg_reference:
-                    if service_msg_reference.text:
-                        service_text = service_msg_reference.text.split("\n", 1)[1]
-                        updated_reference_text = f"{new_label}\n{service_text}"
+                    service_msg_ref_stmt = select(MessageDB).where(
+                        MessageDB.chat_id == service_message.destination_chat_id,
+                        MessageDB.message_id == service_message.destination_message_id,
+                        MessageDB.type == MessageType.SERVICE,
+                        MessageDB.status.is_not(None),
+                        MessageDB.is_status_reference.is_(True),
+                    )
+                    service_msg_ref_res = await db.execute(service_msg_ref_stmt)
+                    service_msg_reference = service_msg_ref_res.scalar_one_or_none()
 
-                        try:
-                            await bot.edit_message_text(
-                                text=updated_reference_text,
-                                chat_id=service_msg_reference.destination_chat_id,
-                                message_id=service_msg_reference.destination_message_id,
-                            )
-                        except Exception:
+                    if service_msg_reference:
+                        if service_msg_reference.text:
+                            service_text = service_msg_reference.text.split("\n", 1)[1]
+                            updated_reference_text = f"{new_label}\n{service_text}"
+
                             try:
-                                await bot.send_message(
-                                    service_msg_reference.destination_chat_id,
-                                    f"Не вдалось змінити повідомлення. Статус змінено на: {new_label}",
-                                    message_thread_id=service_msg_reference.destination_thread_id,
-                                    reply_to_message_id=service_msg_reference.destination_message_id,
+                                await bot.edit_message_text(
+                                    text=updated_reference_text,
+                                    chat_id=service_msg_reference.destination_chat_id,
+                                    message_id=service_msg_reference.destination_message_id,
                                 )
-                            except Exception as e:
-                                logger.error(e)
+                            except Exception:
+                                try:
+                                    await bot.send_message(
+                                        service_msg_reference.destination_chat_id,
+                                        f"Не вдалось змінити повідомлення. Статус змінено на: {new_label}",
+                                        message_thread_id=service_msg_reference.destination_thread_id,
+                                        reply_to_message_id=service_msg_reference.destination_message_id,
+                                    )
+                                except Exception as e:
+                                    logger.error(e)
 
-                        service_msg_reference.text = updated_reference_text
+                            service_msg_reference.text = updated_reference_text
 
-                    service_msg_reference.status = MessageStatus.COMPLETED
-                    service_msg_reference.status_changed_by_user = message.from_user.id
+                        service_msg_reference.status = MessageStatus.COMPLETED
+                        service_msg_reference.status_changed_by_user = (
+                            message.from_user.id
+                        )
 
     additional_info: str | None = None
     if message.chat.type == TelegramChatType.PRIVATE:
@@ -793,20 +820,7 @@ async def send_admin_request(
         return
 
     additional_info = await get_captain_or_chat_info(db, message.from_user.id)
-
-    last_request_stmt = (
-        select(MessageDB.status)
-        .where(
-            MessageDB.chat_id == message.from_user.id,
-            MessageDB.destination_chat_id == organization.admin_chat_id,
-            MessageDB.type == MessageType.SERVICE,
-            MessageDB.status.is_not(None),
-        )
-        .order_by(MessageDB.created_at.desc())
-        .limit(1)
-    )
-    last_request_result = await db.execute(last_request_stmt)
-    last_request_status = last_request_result.scalar_one_or_none()
+    is_no_status = await is_no_status_request(db, message, organization.admin_chat_id)
 
     await send_message(
         db,
@@ -816,7 +830,7 @@ async def send_admin_request(
         None,
         MessageType.REQUEST,
         additional_info,
-        is_no_status_request=last_request_status == MessageStatus.NEW,
+        is_no_status_request=is_no_status,
     )
     await put_reaction(message)
 
