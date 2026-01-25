@@ -685,7 +685,10 @@ async def process_reply_request(
                     MessageDB.chat_id == request_msg.chat_id,
                     MessageDB.message_id == request_msg.message_id,
                     MessageDB.type == MessageType.SERVICE,
-                    MessageDB.status != MessageStatus.COMPLETED,
+                    or_(
+                        MessageDB.status != MessageStatus.COMPLETED,
+                        MessageDB.status.is_(None),
+                    ),
                     MessageDB.text.is_not(None),
                 )
                 .limit(1)
