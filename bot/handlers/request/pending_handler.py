@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import timezone
 from aiogram.enums import ChatType
 from aiogram.types import Message
 from sqlalchemy import or_, select
@@ -55,7 +56,9 @@ async def render_section(
             msg.destination_thread_id,
             msg.destination_message_id,
         )
-        await splitter.add(f"{idx}) {url}\n")
+        date_utc = msg.created_at.astimezone(timezone.utc).strftime("%d.%m")
+
+        await splitter.add(f"{idx}) {url} {date_utc}\n")
 
 
 async def show_pending(
