@@ -19,6 +19,7 @@ from bot.handlers.admin.organization_settings import (
     confirm_delete_handler,
     request_delete_handler,
     settings_handler,
+    toggle_daily_notifications_handler,
     toggle_messages_handler,
     toggle_privacy_handler,
 )
@@ -46,6 +47,10 @@ admin_router.callback_query.register(
 admin_router.callback_query.register(
     toggle_messages_handler,
     OrganizationCallback.filter(F.action == "toggle_messages"),
+)
+admin_router.callback_query.register(
+    toggle_daily_notifications_handler,
+    OrganizationCallback.filter(F.action == "toggle_daily_notifications"),
 )
 admin_router.callback_query.register(
     request_delete_handler,

@@ -5,10 +5,13 @@ from aiogram.types import Message
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logger import logger
 from app.core.enums import MessageType, MessageStatus
 from app.db.models.message import Message as MessageDB
+from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.format_message_url import format_message_url
+from bot.utils.get_bot import get_organization_bot
 from bot.utils.message_splitter import TelegramHTMLSplitter
 
 
@@ -189,3 +192,122 @@ async def pending_chat_handler(
     db = await lazy_db.get()
 
     await show_pending(db, message, None, "<b>Запити чату</b>")
+
+
+async def send_daily_pending_notification(
+    db: AsyncSession, organization: Organization
+) -> None:
+    if not organization.admin_chat_id or not organization.bot:
+        return
+
+    conditions = [
+        MessageDB.destination_chat_id == organization.admin_chat_id,
+        MessageDB.type == MessageType.SERVICE,
+        MessageDB.status.in_([MessageStatus.IN_PROCESS, MessageStatus.NEW]),
+    ]
+
+    if organization.admin_chat_thread_id:
+        conditions.append(
+            or_(
+                MessageDB.destination_thread_id == organization.admin_chat_thread_id,
+                MessageDB.destination_thread_id.is_(None),
+            )
+        )
+
+    stmt = select(MessageDB).where(*conditions).order_by(MessageDB.id)
+
+    result = await db.execute(stmt)
+    msgs = result.scalars().all()
+
+    if not msgs:
+        return
+
+    groups: dict[tuple[MessageStatus | None, bool | None], list[MessageDB]] = (
+        defaultdict(list)
+    )
+
+    for msg in msgs:
+        groups[(msg.status, msg.is_status_reference)].append(msg)
+
+    bot = get_organization_bot(organization)
+
+    try:
+        async def send_func(text: str, parse_mode: str | None = None) -> None:
+            await bot.send_message(
+                organization.admin_chat_id, # type: ignore
+                text,
+                message_thread_id=organization.admin_chat_thread_id,
+                parse_mode=parse_mode,
+            )
+
+        splitter = TelegramHTMLSplitter(send_func=send_func)
+
+        await splitter.add("📅 <b>Щоденне нагадування про необроблені запити</b>\n\n")
+
+        incoming_has_messages = False
+        for i, (key, header) in enumerate(INCOMING_SECTIONS):
+            msgs_list = groups.get(key)
+            if not msgs_list:
+                continue
+
+            await render_section(
+                splitter,
+                header,
+                msgs_list,
+                newline_before=incoming_has_messages and i != 0,
+            )
+            incoming_has_messages = True
+
+        if incoming_has_messages:
+            await splitter.add("\n")
+
+        outgoing_has_messages = False
+        for key, header in OUTGOING_SECTIONS:
+            msgs_list = groups.get(key)
+            if not msgs_list:
+                continue
+
+            if not outgoing_has_messages:
+                if not incoming_has_messages:
+                    await splitter.add("\n")
+
+                await splitter.add("<b>--- Вихідні запити ---</b>\n")
+
+            await render_section(
+                splitter,
+                header,
+                msgs_list,
+                newline_before=True,
+            )
+            outgoing_has_messages = True
+
+        await splitter.flush()
+    except Exception as e:
+        logger.error(
+            f"Failed to send daily pending notification for org {organization.id}: {e}"
+        )
+    finally:
+        await bot.session.close()
+
+
+async def send_all_daily_pending_notifications(db: AsyncSession) -> None:
+    stmt = select(Organization).where(
+        Organization.daily_pending_notifications.is_(True),
+        Organization.admin_chat_id.is_not(None),
+        Organization.bot.has(),
+    )
+
+    result = await db.execute(stmt)
+    organizations = result.scalars().all()
+
+    logger.info(
+        f"Sending daily pending notifications to {len(organizations)} organizations"
+    )
+
+    for organization in organizations:
+        try:
+            await send_daily_pending_notification(db, organization)
+        except Exception as e:
+            logger.error(
+                f"Error sending daily notification for org {organization.id}: {e}"
+            )

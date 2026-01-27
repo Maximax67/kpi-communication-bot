@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     AES_TOKEN: SecretStr
     AES_TOKEN_SALT: SecretStr | None = None
 
+    DAILY_PENDING_NOTIFICATION_HOUR: int = 12
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

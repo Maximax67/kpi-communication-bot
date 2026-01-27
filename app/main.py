@@ -12,7 +12,10 @@ from app.db.session import setup_db
 from app.routes import api
 from app.core.settings import settings
 from bot.root_bot import ROOT_BOT
-from bot.utils.periodic_tasks import periodic_data_update
+from bot.utils.periodic_tasks import (
+    periodic_data_update,
+    daily_pending_notifications_task,
+)
 from bot.utils.setup import setup_root_organization, startup_bots_setup
 
 
@@ -23,14 +26,22 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await startup_bots_setup()
 
     captains_update_task = asyncio.create_task(periodic_data_update())
+    daily_notifications_task = asyncio.create_task(daily_pending_notifications_task())
 
     logger.info("App started successfully")
 
     yield
 
     captains_update_task.cancel()
+    daily_notifications_task.cancel()
+
     try:
         await captains_update_task
+    except asyncio.CancelledError:
+        pass
+
+    try:
+        await daily_notifications_task
     except asyncio.CancelledError:
         pass
 

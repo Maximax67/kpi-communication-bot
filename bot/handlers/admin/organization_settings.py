@@ -37,12 +37,16 @@ async def show_settings(
     messages_status = (
         "✅ Увімкнено" if organization.is_admins_accept_messages else "❌ Вимкнено"
     )
+    daily_notifications_status = (
+        "✅ Увімкнено" if organization.daily_pending_notifications else "❌ Вимкнено"
+    )
 
     text = (
         f"<b>⚙️ Налаштування організації</b>\n\n"
         f"<b>Назва:</b> {html.escape(organization.title)}\n"
         f"<b>Приватність:</b> {privacy_status}\n"
         f"<b>Прийом повідомлень:</b> {messages_status}\n"
+        f"<b>Щоденні нагадування про запити:</b> {daily_notifications_status}\n"
     )
 
     kb = InlineKeyboardBuilder()
@@ -74,6 +78,21 @@ async def show_settings(
             text="✅ Увімкнути прийом повідомлень",
             callback_data=OrganizationCallback(
                 action="toggle_messages", id=organization.id
+            ),
+        )
+
+    if organization.daily_pending_notifications:
+        kb.button(
+            text="❌ Вимкнути щоденні нагадування",
+            callback_data=OrganizationCallback(
+                action="toggle_daily_notifications", id=organization.id
+            ),
+        )
+    else:
+        kb.button(
+            text="✅ Увімкнути щоденні нагадування",
+            callback_data=OrganizationCallback(
+                action="toggle_daily_notifications", id=organization.id
             ),
         )
 
@@ -135,6 +154,30 @@ async def toggle_messages_handler(
 
     db = await lazy_db.get()
     organization.is_admins_accept_messages = not organization.is_admins_accept_messages
+    await db.merge(organization)
+    await db.commit()
+
+    organization_cache.update(organization)
+
+    await show_settings(callback, organization)
+    await callback.answer()
+
+
+async def toggle_daily_notifications_handler(
+    callback: CallbackQuery,
+    callback_data: OrganizationCallback,
+    organization: Organization,
+    organization_cache: OrganizationCache,
+    lazy_db: LazyDbSession,
+) -> None:
+    if callback_data.id != organization.id:
+        await callback.answer("❌ Кнопка призначена для іншої організації!")
+        return
+
+    db = await lazy_db.get()
+    organization.daily_pending_notifications = (
+        not organization.daily_pending_notifications
+    )
     await db.merge(organization)
     await db.commit()
 

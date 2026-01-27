@@ -25,6 +25,9 @@ class Organization(Base, TimestampMixin):
     greeting_message: Mapped[str | None] = mapped_column(nullable=True)
     is_private: Mapped[bool] = mapped_column(default=False, nullable=False)
     is_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
+    daily_pending_notifications: Mapped[bool] = mapped_column(
+        default=False, nullable=False
+    )
     owner: Mapped[int] = mapped_column(
         BigInteger, unique=True, index=True, nullable=False
     )
