@@ -3,6 +3,7 @@ from datetime import timezone
 from aiogram.enums import ChatType
 from aiogram.types import Message
 from sqlalchemy import or_, select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logger import logger
@@ -231,15 +232,16 @@ async def send_daily_pending_notification(
 
     bot = get_organization_bot(organization)
 
-    try:
-        async def send_func(text: str, parse_mode: str | None = None) -> None:
+    async def send_func(text: str, parse_mode: str | None = None) -> None:
+        if organization.admin_chat_id:
             await bot.send_message(
-                organization.admin_chat_id, # type: ignore
+                organization.admin_chat_id,
                 text,
                 message_thread_id=organization.admin_chat_thread_id,
                 parse_mode=parse_mode,
             )
 
+    try:
         splitter = TelegramHTMLSplitter(send_func=send_func)
 
         await splitter.add("📅 <b>Щоденне нагадування про необроблені запити</b>\n\n")
@@ -291,10 +293,14 @@ async def send_daily_pending_notification(
 
 
 async def send_all_daily_pending_notifications(db: AsyncSession) -> None:
-    stmt = select(Organization).where(
-        Organization.daily_pending_notifications.is_(True),
-        Organization.admin_chat_id.is_not(None),
-        Organization.bot.has(),
+    stmt = (
+        select(Organization)
+        .options(joinedload(Organization.bot))
+        .where(
+            Organization.daily_pending_notifications.is_(True),
+            Organization.admin_chat_id.is_not(None),
+            Organization.bot.has(),
+        )
     )
 
     result = await db.execute(stmt)
