@@ -124,6 +124,7 @@ async def setup_root_organization() -> None:
                         is_verified=True,
                         is_private=settings.ROOT_ORGANIZATION_PRIVATE,
                         owner=0,
+                        created_from_bot_id=0,
                     )
                 )
                 await db.commit()

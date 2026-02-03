@@ -5,8 +5,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 
 from app.core.settings import settings
-from app.core.logger import logger
 from app.db.models.organization import Organization
+from app.db.models.telegram_bot import TelegramBot
 from bot.callback import MainCallback, OrganizationCallback
 from bot.middlewares.db_session import LazyDbSession
 from bot.root_bot import ROOT_BOT
@@ -14,6 +14,7 @@ from bot.states import CreateOrganizationStates
 from bot.utils.delete_last_message import delete_last_message
 from bot.utils.edit_callback_message import edit_callback_message
 from bot.utils.format_user import format_user_info
+from bot.utils.get_bot import get_bot
 
 
 async def create_organization_handler(
@@ -91,6 +92,9 @@ async def process_organization_description(
     state: FSMContext,
     lazy_db: LazyDbSession,
 ) -> None:
+    if not message.bot:
+        return
+
     if not message.text or not message.from_user:
         await message.answer("❌ Будь ласка, введіть текстовий опис")
         return
@@ -124,6 +128,7 @@ async def process_organization_description(
         title=org_name,
         is_verified=False,
         owner=message.from_user.id,
+        created_from_bot_id=message.bot.id,
     )
 
     db.add(new_org)
@@ -135,7 +140,8 @@ async def process_organization_description(
     admin_message = (
         f"<b>Нова заявка на створення організації</b>\n\n"
         f"<b>Назва:</b> {html.escape(org_name)}\n"
-        f"<b>ID організації:</b> {new_org.id}\n\n"
+        f"<b>ID організації:</b> {new_org.id}\n"
+        f"<b>З бота:</b> {message.bot.id}\n\n"
         f"<b>Відомості про користувача:</b>\n{user_info}\n\n"
         f"<b>Опис:</b>\n{html.escape(description)}"
     )
@@ -202,13 +208,24 @@ async def verify_organization(
 
     await callback.answer()
 
-    try:
-        await ROOT_BOT.send_message(
+    bot_result = await db.execute(
+        select(TelegramBot).where(TelegramBot.id == organization.created_from_bot_id)
+    )
+    db_bot = bot_result.scalar_one_or_none()
+
+    if db_bot:
+        telegram_bot = get_bot(db_bot)
+        await telegram_bot.send_message(
             organization.owner,
             f"Організація підтверджена: {html.escape(organization.title)}. Тепер створіть свого бота командою: /set_bot [token]",
         )
-    except Exception as e:
-        logger.error(e)
+    else:
+        await ROOT_BOT.send_message(
+            settings.ROOT_ADMIN_CHAT_ID,
+            "Бота через якого здійснювався запит видалено з системи",
+            message_thread_id=settings.ROOT_ADMIN_VERIFICATION_THREAD_ID,
+            reply_to_message_id=callback.message.message_id,
+        )
 
 
 async def reject_organization(
@@ -238,9 +255,21 @@ async def reject_organization(
     text = f"{callback.message.text}\n\n❌ Відхилено: {format_user_info(callback.from_user)}"
     await edit_callback_message(callback, text, parse_mode="HTML")
 
-    try:
-        await ROOT_BOT.send_message(
-            organization.owner, f"Створення організації відхилено: {organization.title}"
+    bot_result = await db.execute(
+        select(TelegramBot).where(TelegramBot.id == organization.created_from_bot_id)
+    )
+    db_bot = bot_result.scalar_one_or_none()
+
+    if db_bot:
+        telegram_bot = get_bot(db_bot)
+        await telegram_bot.send_message(
+            organization.owner,
+            f"Створення організації відхилено: {organization.title}",
         )
-    except Exception as e:
-        logger.error(e)
+    else:
+        await ROOT_BOT.send_message(
+            settings.ROOT_ADMIN_CHAT_ID,
+            "Бота через якого здійснювався запит видалено з системи",
+            message_thread_id=settings.ROOT_ADMIN_VERIFICATION_THREAD_ID,
+            reply_to_message_id=callback.message.message_id,
+        )

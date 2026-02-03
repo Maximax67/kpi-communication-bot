@@ -31,6 +31,7 @@ class Organization(Base, TimestampMixin):
     owner: Mapped[int] = mapped_column(
         BigInteger, unique=True, index=True, nullable=False
     )
+    created_from_bot_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
     chats: Mapped[list["Chat"]] = relationship(
         back_populates="organization", passive_deletes=True
