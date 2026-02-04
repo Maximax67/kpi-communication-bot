@@ -227,6 +227,11 @@ async def copy_message(
                     chat_id=to_send_chat_id,
                     reply_to_message_id=reply_to_message_id,
                 )
+            elif "message to be replied not found" in str(e):
+                forwarded_msg = await message.copy_to(
+                    chat_id=to_send_chat_id,
+                    message_thread_id=to_send_thread_id,
+                )
             else:
                 raise
     else:
@@ -242,6 +247,13 @@ async def copy_message(
                     to_send_chat_id,
                     None,
                     reply_to_message_id,
+                )
+            elif "message to be replied not found" in str(e):
+                forwarded_msg = await resend_message(
+                    message,
+                    bot,
+                    to_send_chat_id,
+                    to_send_thread_id,
                 )
             else:
                 raise
@@ -308,14 +320,37 @@ async def send_message(
             keyboard = get_request_status_keyboard(MessageStatus.NEW)
             is_status_reference = False
 
-        service_msg = await bot.send_message(
-            to_send_chat_id,
-            service_text,
-            message_thread_id=corrected_to_send_thread_id,
-            reply_markup=keyboard,
-            reply_to_message_id=reply_to_message_id,
-            parse_mode="HTML",
-        )
+        try:
+            service_msg = await bot.send_message(
+                to_send_chat_id,
+                service_text,
+                message_thread_id=corrected_to_send_thread_id,
+                reply_markup=keyboard,
+                reply_to_message_id=reply_to_message_id,
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            if "message thread not found" in str(e):
+                service_msg = await bot.send_message(
+                    to_send_chat_id,
+                    service_text,
+                    reply_markup=keyboard,
+                    reply_to_message_id=reply_to_message_id,
+                    parse_mode="HTML",
+                )
+                corrected_to_send_thread_id = None
+                to_send_thread_id = None
+            elif "message to be replied not found" in str(e):
+                service_msg = await bot.send_message(
+                    to_send_chat_id,
+                    service_text,
+                    message_thread_id=corrected_to_send_thread_id,
+                    reply_markup=keyboard,
+                    parse_mode="HTML",
+                )
+                reply_to_message_id = None
+            else:
+                raise
 
         db.add(
             MessageDB(
@@ -381,13 +416,34 @@ async def send_message(
             if additional_service_text:
                 service_text += f"\n{additional_service_text}"
 
-        service_msg = await bot.send_message(
-            to_send_chat_id,
-            service_text,
-            message_thread_id=corrected_to_send_thread_id,
-            reply_to_message_id=reply_to_message_id,
-            parse_mode="HTML",
-        )
+        try:
+            service_msg = await bot.send_message(
+                to_send_chat_id,
+                service_text,
+                message_thread_id=corrected_to_send_thread_id,
+                reply_to_message_id=reply_to_message_id,
+                parse_mode="HTML",
+            )
+        except Exception as e:
+            if "message thread not found" in str(e):
+                service_msg = await bot.send_message(
+                    to_send_chat_id,
+                    service_text,
+                    reply_to_message_id=reply_to_message_id,
+                    parse_mode="HTML",
+                )
+                corrected_to_send_thread_id = None
+                to_send_thread_id = None
+            elif "message to be replied not found" in str(e):
+                service_msg = await bot.send_message(
+                    to_send_chat_id,
+                    service_text,
+                    message_thread_id=corrected_to_send_thread_id,
+                    parse_mode="HTML",
+                )
+                reply_to_message_id = None
+            else:
+                raise
 
         db.add(
             MessageDB(
@@ -504,6 +560,14 @@ async def send_message(
                     )
                     corrected_to_send_thread_id = None
                     to_send_thread_id = None
+                elif "message to be replied not found" in str(e):
+                    service_msg = await bot.send_message(
+                        to_send_chat_id,
+                        service_text,
+                        message_thread_id=corrected_to_send_thread_id,
+                        parse_mode="HTML",
+                    )
+                    reply_to_message_id = None
                 else:
                     raise
 
@@ -710,9 +774,7 @@ async def process_reply_request(
                         .order_by(MessageDB.created_at.desc())
                         .limit(1)
                     )
-                    service_previous_result = await db.execute(
-                        service_previous_stmt
-                    )
+                    service_previous_result = await db.execute(service_previous_stmt)
                     service_message = service_previous_result.scalar_one_or_none()
 
                 if (
@@ -778,18 +840,25 @@ async def process_reply_request(
         additional_info = await get_captain_or_chat_info(db, message.from_user.id)
 
     try:
-        await send_message(
-            db,
-            message,
-            to_send_chat_id,
-            to_send_thread_id,
-            reply_to_msg_id,
-            message_type,
-            additional_info,
-            bot=bot,
-        )
-
-        await put_reaction(message)
+        try:
+            await send_message(
+                db,
+                message,
+                to_send_chat_id,
+                to_send_thread_id,
+                reply_to_msg_id,
+                message_type,
+                additional_info,
+                bot=bot,
+            )
+            await put_reaction(message)
+        except Exception as e:
+            if "bot was blocked by the user" in str(e):
+                await message.answer(
+                    "Користувач заблокував бота, відповідь не була надіслана"
+                )
+            else:
+                raise
 
         if service_message and service_message.text:
             to_use_bot = bot if request_msg.chat_id == message.chat.id else message.bot
@@ -802,13 +871,19 @@ async def process_reply_request(
                     reply_markup=get_request_status_keyboard(MessageStatus.COMPLETED),
                     parse_mode="HTML",
                 )
-            except Exception:
-                await to_use_bot.send_message(
-                    service_message.destination_chat_id,
-                    f"Не вдалось змінити повідомлення. Статус змінено на: {new_label} [{user_info}]",
-                    message_thread_id=service_message.destination_thread_id,
-                    reply_to_message_id=service_message.destination_message_id,
+            except Exception as e:
+                error_text = str(e)
+                ignored_errors = (
+                    "bot was blocked by the user",
+                    "TOPIC_CLOSED",
                 )
+                if not any(err in error_text for err in ignored_errors):
+                    await to_use_bot.send_message(
+                        service_message.destination_chat_id,
+                        f"Не вдалось змінити повідомлення. Статус змінено на: {new_label} [{user_info}]",
+                        message_thread_id=service_message.destination_thread_id,
+                        reply_to_message_id=service_message.destination_message_id,
+                    )
     finally:
         if not request_msg.is_within_organization:
             await bot.session.close()
