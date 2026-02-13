@@ -835,6 +835,8 @@ async def process_reply_request(
                             message.from_user.id
                         )
 
+                    await db.commit()
+
     additional_info: str | None = None
     if message.chat.type == TelegramChatType.PRIVATE:
         additional_info = await get_captain_or_chat_info(db, message.from_user.id)
