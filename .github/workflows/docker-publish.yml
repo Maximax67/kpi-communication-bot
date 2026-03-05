@@ -24,4 +24,6 @@ jobs:
           context: .
           file: Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/kpi-communication-bot:latest
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/kpi-communication-bot:latest
+            ${{ secrets.DOCKER_USERNAME }}/kpi-communication-bot:sha-${{ github.sha }}
