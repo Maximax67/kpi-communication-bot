@@ -862,7 +862,11 @@ async def process_reply_request(
             else:
                 raise
 
-        if service_message and service_message.text:
+        if (
+            service_message
+            and service_message.text
+            and service_message.status is not None
+        ):
             to_use_bot = bot if request_msg.chat_id == message.chat.id else message.bot
 
             try:
@@ -877,12 +881,13 @@ async def process_reply_request(
                 error_text = str(e)
                 ignored_errors = (
                     "bot was blocked by the user",
+                    "message is not modified",
                     "TOPIC_CLOSED",
                 )
                 if not any(err in error_text for err in ignored_errors):
                     await to_use_bot.send_message(
                         service_message.destination_chat_id,
-                        f"Не вдалось змінити повідомлення. Статус змінено на: {new_label} [{user_info}]",
+                        "Не вдалось змінити повідомлення.",
                         message_thread_id=service_message.destination_thread_id,
                         reply_to_message_id=service_message.destination_message_id,
                     )
