@@ -1,4 +1,5 @@
 import html
+
 from aiogram.types import User
 
 from app.db.models.user import User as UserDb

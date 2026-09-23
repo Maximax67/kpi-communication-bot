@@ -1,20 +1,19 @@
-from aiogram import F, Dispatcher
+from aiogram import Dispatcher, F
 
 from app.db.session import async_session
+from bot.callback import MainCallback
 from bot.handlers.cancel import cancel_handler
 from bot.handlers.close import close_handler
-from bot.callback import MainCallback
 from bot.middlewares.ban_middleware import BanMiddleware
 from bot.middlewares.db_session import DbSessionMiddleware
 from bot.middlewares.organization import OrganizationMiddleware
 from bot.middlewares.user_middleware import UserMiddleware
-from bot.routers.root_router import root_router
 from bot.routers.admin_router import admin_router
 from bot.routers.chat_router import chat_router
-from bot.routers.user_router import user_router
 from bot.routers.request_router import request_router
+from bot.routers.root_router import root_router
+from bot.routers.user_router import user_router
 from bot.utils.migrate_chat import auto_migrate
-
 
 dp = Dispatcher()
 

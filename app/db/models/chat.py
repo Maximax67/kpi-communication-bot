@@ -1,16 +1,17 @@
 from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.enums import ChatType, VisibilityLevel
 from app.db.base import Base
 from app.db.timestamps import TimestampMixin
 
-
 if TYPE_CHECKING:
-    from app.db.models.organization import Organization
-    from app.db.models.chat_thread import ChatThread
     from app.db.models.chat_captain import ChatCaptain
+    from app.db.models.chat_thread import ChatThread
     from app.db.models.chat_user import ChatUser
+    from app.db.models.organization import Organization
 
 
 class Chat(Base, TimestampMixin):

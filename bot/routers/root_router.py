@@ -2,9 +2,14 @@ from aiogram import F, Router
 from aiogram.filters import Command
 
 from app.core.settings import settings
+from bot.callback import OrganizationCallback
 from bot.handlers.admin.rename_organization import (
     approve_rename_organization,
     reject_rename_organization,
+)
+from bot.handlers.root.create_organization import (
+    reject_organization,
+    verify_organization,
 )
 from bot.handlers.root.delete_ogranization import (
     approve_delete_organization,
@@ -14,13 +19,7 @@ from bot.handlers.root.delete_ogranization import (
     reject_delete_organization,
 )
 from bot.handlers.root.list_organizations import organizations_handler
-from bot.handlers.root.create_organization import (
-    verify_organization,
-    reject_organization,
-)
-from bot.callback import OrganizationCallback
 from bot.handlers.root.update_commands import update_commands_handler
-
 
 root_router = Router()
 

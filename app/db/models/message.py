@@ -1,5 +1,6 @@
 from sqlalchemy import BigInteger, Enum, Index
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.core.enums import MessageStatus, MessageType
 from app.db.base import Base
 from app.db.timestamps import TimestampMixin

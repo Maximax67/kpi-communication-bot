@@ -5,8 +5,8 @@ from aiogram import Bot
 from aiogram.types import LinkPreviewOptions
 from fastapi import Request, Response
 
-from app.core.settings import settings
 from app.core.logger import logger
+from app.core.settings import settings
 from bot.root_bot import ROOT_BOT
 from bot.utils.message_splitter import TelegramHTMLSplitter
 

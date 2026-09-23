@@ -3,23 +3,23 @@ from aiogram.filters import Command
 
 from bot.callback import ChatCallback, SpamCallback, ThreadCallback
 from bot.handlers.chat.admin_commands import (
+    change_chat_visibility_handler,
+    change_thread_visibility_handler,
+    chat_visibility_handler,
     confirm_chat_delete_handler,
     delete_chat_handler,
     delete_chat_tags_handler,
+    delete_thread_handler,
     delete_thread_tags_handler,
     disable_pin_chat_requests_handler,
     pin_chat_requests_handler,
     pin_thread_requests_handler,
     rename_chat_handler,
-    chat_visibility_handler,
-    change_chat_visibility_handler,
+    rename_thread_handler,
     set_chat_tags_handler,
     set_thread_handler,
-    delete_thread_handler,
-    rename_thread_handler,
     set_thread_tags_handler,
     thread_visibility_handler,
-    change_thread_visibility_handler,
 )
 from bot.handlers.chat.captains_management import (
     captains_list_handler,
@@ -32,12 +32,11 @@ from bot.handlers.chat.captains_management import (
 )
 from bot.handlers.chat.user_commands import (
     chat_handler,
-    members_handler,
-    groups_handler,
     group_members_handler,
+    groups_handler,
+    members_handler,
     threads_handler,
 )
-
 
 chat_router = Router()
 

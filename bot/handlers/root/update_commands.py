@@ -1,8 +1,9 @@
 import asyncio
+
 from aiogram import Bot
 from aiogram.types import Message
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.core.enums import ChatType
 from app.core.logger import logger
@@ -51,7 +52,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
                     )
                 except Exception as e:
                     error_msg = (
-                        f"Admin chat (ID: {organization.admin_chat_id}): {str(e)}"
+                        f"Admin chat (ID: {organization.admin_chat_id}): {e!s}"
                     )
                     org_errors.append(error_msg)
                     logger.error(
@@ -67,7 +68,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
                                 bot, chat.id, bool(chat_info.is_forum)
                             )
                         except Exception as e:
-                            error_msg = f"Internal chat (ID: {chat.id}): {str(e)}"
+                            error_msg = f"Internal chat (ID: {chat.id}): {e!s}"
                             org_errors.append(error_msg)
                             logger.error(
                                 f"Failed to set internal chat commands for {organization.title}, chat {chat.id}: {e}"
@@ -76,7 +77,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
                         try:
                             await set_bot_commands_for_external_chat(bot, chat.id)
                         except Exception as e:
-                            error_msg = f"External chat (ID: {chat.id}): {str(e)}"
+                            error_msg = f"External chat (ID: {chat.id}): {e!s}"
                             org_errors.append(error_msg)
                             logger.error(
                                 f"Failed to set external chat commands for {organization.title}, chat {chat.id}: {e}"
@@ -84,7 +85,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
 
                     await asyncio.sleep(0.1)
                 except Exception as e:
-                    error_msg = f"Chat (ID: {chat.id}): {str(e)}"
+                    error_msg = f"Chat (ID: {chat.id}): {e!s}"
                     org_errors.append(error_msg)
                     logger.error(
                         f"Unexpected error processing chat {chat.id} for {organization.title}: {e}"
@@ -93,7 +94,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
             try:
                 await set_bot_commands_for_private_chats(bot)
             except Exception as e:
-                error_msg = f"Private chats: {str(e)}"
+                error_msg = f"Private chats: {e!s}"
                 org_errors.append(error_msg)
                 logger.error(
                     f"Failed to set private chat commands for {organization.title}: {e}"
@@ -110,7 +111,7 @@ async def update_commands_handler(message: Message, lazy_db: LazyDbSession) -> N
                 success_count += 1
 
         except Exception as e:
-            error_msg = f"Critical error: {str(e)}"
+            error_msg = f"Critical error: {e!s}"
             errors.append({"organization": organization.title, "errors": error_msg})
             logger.error(
                 f"Critical error processing organization {organization.title}: {e}"

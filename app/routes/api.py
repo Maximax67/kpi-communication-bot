@@ -1,10 +1,10 @@
 from urllib.parse import urljoin
+
 from fastapi import APIRouter, Request, Response
 
-from app.core.settings import settings
 from app.core.limiter import limiter
+from app.core.settings import settings
 from app.routes import webhook
-
 
 router = APIRouter(prefix=settings.API_PREFIX)
 

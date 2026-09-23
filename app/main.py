@@ -1,6 +1,7 @@
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -8,13 +9,13 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.limiter import limiter
 from app.core.logger import logger
+from app.core.settings import settings
 from app.db.session import setup_db
 from app.routes import api
-from app.core.settings import settings
 from bot.root_bot import ROOT_BOT
 from bot.utils.periodic_tasks import (
-    periodic_data_update,
     daily_pending_notifications_task,
+    periodic_data_update,
 )
 from bot.utils.setup import setup_root_organization, startup_bots_setup
 

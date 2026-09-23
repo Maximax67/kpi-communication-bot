@@ -1,6 +1,5 @@
 import re
 
-
 GOOGLE_AUTH_SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 USERNAME_REGEX = re.compile(

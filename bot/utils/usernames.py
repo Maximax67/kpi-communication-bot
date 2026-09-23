@@ -1,4 +1,5 @@
 from typing import Literal
+
 from app.core.constants import USERNAME_REGEX
 
 

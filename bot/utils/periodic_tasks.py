@@ -1,9 +1,9 @@
 import asyncio
 from datetime import datetime, timezone
-from app.db.session import async_session
+
 from app.core.logger import logger
 from app.core.settings import settings
-
+from app.db.session import async_session
 from bot.handlers.request.pending_handler import send_all_daily_pending_notifications
 from bot.utils.captains import update_captains
 
@@ -11,9 +11,8 @@ from bot.utils.captains import update_captains
 async def periodic_data_update(interval_seconds: int = 43200) -> None:
     while True:
         try:
-            async with async_session() as db:
-                async with db.begin():
-                    await update_captains(db)
+            async with async_session() as db, db.begin():
+                await update_captains(db)
         except Exception as e:
             logger.error(e)
 
@@ -40,9 +39,8 @@ async def daily_pending_notifications_task() -> None:
             await asyncio.sleep(seconds_until_run)
 
             logger.info("Sending daily pending notifications")
-            async with async_session() as db:
-                async with db.begin():
-                    await send_all_daily_pending_notifications(db)
+            async with async_session() as db, db.begin():
+                await send_all_daily_pending_notifications(db)
             logger.info("Daily pending notifications sent successfully")
 
         except Exception as e:

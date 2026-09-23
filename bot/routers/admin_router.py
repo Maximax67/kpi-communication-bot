@@ -1,10 +1,19 @@
 from aiogram import F, Router
 from aiogram.filters import Command
 
+from bot.callback import ChatCallback, OrganizationCallback
 from bot.handlers.admin.ban import (
     ban_list_handler,
     ban_user_handler,
     unban_user_handler,
+)
+from bot.handlers.admin.bot_management import (
+    delete_bot_handler,
+    set_bot_handler,
+)
+from bot.handlers.admin.captain_spreadsheet import (
+    delete_captains_spreadsheet_handler,
+    set_captains_spreadsheet_handler,
 )
 from bot.handlers.admin.chat_delete import (
     confirm_selected_chat_delete_handler,
@@ -25,16 +34,6 @@ from bot.handlers.admin.organization_settings import (
 )
 from bot.handlers.admin.rename_organization import rename_organization_handler
 from bot.handlers.admin.set_admin_chat import set_admin_chat_handler
-from bot.handlers.admin.bot_management import (
-    set_bot_handler,
-    delete_bot_handler,
-)
-from bot.callback import ChatCallback, OrganizationCallback
-from bot.handlers.admin.captain_spreadsheet import (
-    delete_captains_spreadsheet_handler,
-    set_captains_spreadsheet_handler,
-)
-
 
 admin_router = Router()
 

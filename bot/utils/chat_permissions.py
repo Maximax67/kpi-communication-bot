@@ -4,8 +4,8 @@ from aiogram.types import Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.logger import logger
 from app.core.enums import ChatType
+from app.core.logger import logger
 from app.db.models.chat import Chat
 from app.db.models.organization import Organization
 

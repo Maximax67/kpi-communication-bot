@@ -1,5 +1,5 @@
-from aiogram.types import Message
 from aiogram.enums import ChatType
+from aiogram.types import Message
 
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession

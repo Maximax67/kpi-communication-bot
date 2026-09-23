@@ -1,10 +1,11 @@
 import html
-from aiogram.types import Message
+
 from aiogram.enums import ChatType
+from aiogram.types import Message
 from sqlalchemy import exists, select
 
-from app.core.settings import settings
 from app.core.logger import logger
+from app.core.settings import settings
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession
 from bot.middlewares.organization import OrganizationCache

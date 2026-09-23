@@ -1,8 +1,9 @@
 import asyncio
 import html
 import re
+
 from aiogram import Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload

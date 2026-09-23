@@ -1,8 +1,8 @@
 from aiogram.types import Message
 
 from app.db.models.organization import Organization
-from bot.middlewares.organization import OrganizationCache
 from bot.middlewares.db_session import LazyDbSession
+from bot.middlewares.organization import OrganizationCache
 
 
 async def set_greeting_handler(

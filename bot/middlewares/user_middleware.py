@@ -1,7 +1,9 @@
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from aiogram import BaseMiddleware
 from aiogram.enums import ChatMemberStatus, ChatType
-from aiogram.types import TelegramObject, Message, ChatMemberUpdated, Update
+from aiogram.types import ChatMemberUpdated, Message, TelegramObject, Update
 from cachetools import TTLCache
 from sqlalchemy.ext.asyncio import AsyncSession
 

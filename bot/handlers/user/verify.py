@@ -1,5 +1,5 @@
-from aiogram.types import Message
 from aiogram.enums import ChatType as TelegramChatType
+from aiogram.types import Message
 
 from app.core.enums import ChatType
 from app.db.models.organization import Organization

@@ -1,14 +1,15 @@
 import html
+
 from aiogram import Bot
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
 from aiogram.enums import ChatType as TelegramChatType
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import exists, select
-from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload, selectinload
 
-from app.core.logger import logger
 from app.core.enums import ChatType, MessageType, VisibilityLevel
+from app.core.logger import logger
 from app.db.models.chat import Chat
 from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
@@ -139,7 +140,7 @@ async def show_available_org_chats(
             if (
                 organization.id == organization_id
                 and not current_chat
-                and not organization.admin_chat_id == message.chat.id
+                and organization.admin_chat_id != message.chat.id
             ):
                 await change_callback_or_message(
                     tg_object, "❌ Не вдалось ідентифікувати ваш чат"

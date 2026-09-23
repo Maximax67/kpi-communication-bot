@@ -1,7 +1,8 @@
 import html
+
 from aiogram import Bot
 from aiogram.enums import ChatType as TelegramChatType
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
@@ -10,7 +11,7 @@ from app.core.enums import VisibilityLevel
 from app.db.models.chat import Chat
 from app.db.models.chat_thread import ChatThread
 from app.db.models.organization import Organization
-from bot.callback import ChatCallback, ThreadCallback, MainCallback
+from bot.callback import ChatCallback, MainCallback, ThreadCallback
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.chat_permissions import get_chat_if_admin
 from bot.utils.edit_callback_message import edit_callback_message

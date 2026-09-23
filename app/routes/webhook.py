@@ -1,12 +1,10 @@
-from typing import Dict
-
 from aiogram import Bot
 from aiogram.types import Update
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
     Header,
+    HTTPException,
     Request,
     Response,
 )
@@ -18,7 +16,6 @@ from app.core.enums import CryptoInfo
 from app.core.exceptions import exception_handler
 from app.core.limiter import limiter
 from app.db.session import get_db
-
 from bot.dispatcher import dp
 from bot.root_bot import ROOT_BOT
 
@@ -48,7 +45,7 @@ async def handle_update(
     request: Request,
     response: Response,
     x_telegram_token: str = Header(..., alias="X-Telegram-Bot-Api-Secret-Token"),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db),  # noqa: B008
 ) -> Response:
     bot = await get_telegram_bot(bot_id, db)
     if bot is None:
@@ -71,7 +68,7 @@ async def handle_update(
     try:
         message = update.message
         if message:
-            message_info: Dict[str, str] = {
+            message_info: dict[str, str] = {
                 "chat_id": str(message.chat.id),
                 "message_thread_id": (
                     str(message.message_thread_id)

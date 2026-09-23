@@ -1,10 +1,11 @@
 import html
+
 from aiogram.types import Message
 from sqlalchemy import select
 
+from app.db.models.banned_user import BannedUser
 from app.db.models.organization import Organization
 from app.db.models.user import User
-from app.db.models.banned_user import BannedUser
 from bot.middlewares.ban_middleware import BanController
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.format_user import format_user_info_html
@@ -236,7 +237,7 @@ async def ban_list_handler(
     users_result = await db.execute(users_query)
     users = {user.id: user for user in users_result.scalars().all()}
 
-    admin_ids = list(set([banned.banned_by for banned in banned_users]))
+    admin_ids = {banned.banned_by for banned in banned_users}
     admins_query = select(User).where(User.id.in_(admin_ids))
     admins_result = await db.execute(admins_query)
     admins = {user.id: user for user in admins_result.scalars().all()}

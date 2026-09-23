@@ -1,14 +1,15 @@
 from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
 from app.db.timestamps import TimestampMixin
 
-
 if TYPE_CHECKING:
+    from app.db.models.chat import Chat
     from app.db.models.organization import Organization
     from app.db.models.user import User
-    from app.db.models.chat import Chat
 
 
 class ChatCaptain(Base, TimestampMixin):

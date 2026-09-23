@@ -1,10 +1,12 @@
-from typing import Any, Callable, Awaitable
+from collections.abc import Awaitable, Callable
+from typing import Any
+
 from aiogram import BaseMiddleware, Bot
-from aiogram.types import TelegramObject, Message, Update
-from sqlalchemy import select
-from sqlalchemy.orm import joinedload
-from sqlalchemy.ext.asyncio import AsyncSession
+from aiogram.types import Message, TelegramObject, Update
 from cachetools import TTLCache
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.db.models.organization import Organization
 from app.db.models.telegram_bot import TelegramBot
@@ -87,7 +89,7 @@ class OrganizationMiddleware(BaseMiddleware):
             if message and organization.bot and message.from_user:
                 if message.from_user.id == organization.bot.owner:
                     if message.text is None or (
-                        not message.text == "/set_admin_chat"
+                        message.text != "/set_admin_chat"
                         and not message.text.startswith("/set_admin_chat ")
                         and not message.text.startswith("/set_admin_chat@")
                     ):

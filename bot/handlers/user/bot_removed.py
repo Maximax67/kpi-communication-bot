@@ -1,6 +1,6 @@
-from aiogram.types import ChatMemberUpdated
 from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
+from aiogram.types import ChatMemberUpdated
 from sqlalchemy import select
 
 from app.core.settings import settings

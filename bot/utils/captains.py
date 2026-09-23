@@ -1,18 +1,19 @@
-from collections import defaultdict
 import html
+from collections import defaultdict
 from io import BytesIO
-from aiogram import Bot
-import pandas as pd
-from sqlalchemy import delete, func, insert, or_, select
-from sqlalchemy.orm import joinedload
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.crypto import crypto
-from app.core.settings import settings
-from app.core.logger import logger
+import pandas as pd
+from aiogram import Bot
+from sqlalchemy import delete, func, insert, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
+
 from app.core.constants import USERNAME_REGEX
+from app.core.crypto import crypto
 from app.core.enums import CryptoInfo
 from app.core.google_drive import download_file
+from app.core.logger import logger
+from app.core.settings import settings
 from app.db.models.captain_spreadsheet import CaptainSpreadsheet
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
@@ -99,7 +100,6 @@ async def update_captains_single_spreadhseet(
     two_cols = df.iloc[row_slice, col_positions].dropna()
 
     new_captains: list[ChatCaptain] = []
-    removed_captains: list[ChatCaptain] = []
     changed_captains: list[ChatCaptain] = []
     remind_changed_username: list[ChatCaptain] = []
     processed_chats: set[str] = set()
@@ -152,9 +152,7 @@ async def update_captains_single_spreadhseet(
         )
         new_captains.append(new_captain)
 
-    for captain in current_captains.values():
-        removed_captains.append(captain)
-
+    removed_captains = list(current_captains.values())
     chat_id_by_title: dict[str, int] = {}
 
     if new_captains:

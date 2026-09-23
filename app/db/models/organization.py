@@ -1,13 +1,15 @@
 from typing import TYPE_CHECKING
+
 from sqlalchemy import BigInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
 from app.db.timestamps import TimestampMixin
 
 if TYPE_CHECKING:
-    from app.db.models.chat import Chat
     from app.db.models.banned_user import BannedUser
     from app.db.models.captain_spreadsheet import CaptainSpreadsheet
+    from app.db.models.chat import Chat
     from app.db.models.chat_captain import ChatCaptain
     from app.db.models.telegram_bot import TelegramBot
 

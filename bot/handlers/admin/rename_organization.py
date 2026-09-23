@@ -1,15 +1,16 @@
 import html
-from aiogram.types import Message, CallbackQuery
+
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from app.core.settings import settings
 from app.db.models.organization import Organization
-from bot.middlewares.organization import OrganizationCache
-from bot.root_bot import ROOT_BOT
 from bot.callback import OrganizationCallback
 from bot.middlewares.db_session import LazyDbSession
+from bot.middlewares.organization import OrganizationCache
+from bot.root_bot import ROOT_BOT
 from bot.utils.edit_callback_message import edit_callback_message
 from bot.utils.format_user import format_user_info
 from bot.utils.notify_organization import notify_organization

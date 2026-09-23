@@ -1,16 +1,16 @@
 import secrets
+
 from aiogram import Bot
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.settings import settings
 from app.core.crypto import crypto
 from app.core.enums import CryptoInfo
 from app.core.logger import logger
-from app.db.session import async_session
+from app.core.settings import settings
 from app.db.models.organization import Organization
 from app.db.models.telegram_bot import TelegramBot
-
+from app.db.session import async_session
 from bot.root_bot import ROOT_BOT
 from bot.utils.set_bot_commands import (
     set_bot_commands_for_admin_chat,
@@ -84,47 +84,43 @@ async def update_webhooks(db: AsyncSession) -> None:
 
 
 async def startup_bots_setup() -> None:
-    async with async_session() as db:
-        async with db.begin():
-            await update_webhooks(db)
+    async with async_session() as db, db.begin():
+        await update_webhooks(db)
 
-            bot_id = ROOT_BOT.id
-            root_webhook = await ROOT_BOT.get_webhook_info()
-            if root_webhook.url != get_webhook_url(bot_id):
-                await setup_root_bot(db, settings.ROOT_BOT_TOKEN.get_secret_value())
-                return
+        bot_id = ROOT_BOT.id
+        root_webhook = await ROOT_BOT.get_webhook_info()
+        if root_webhook.url != get_webhook_url(bot_id):
+            await setup_root_bot(db, settings.ROOT_BOT_TOKEN.get_secret_value())
+            return
 
-            await set_bot_commands_for_admin_chat(
-                ROOT_BOT, settings.ROOT_ADMIN_CHAT_ID, True
-            )
+        await set_bot_commands_for_admin_chat(
+            ROOT_BOT, settings.ROOT_ADMIN_CHAT_ID, True
+        )
 
-            root_bot_exists = await db.execute(
-                select(exists().where(TelegramBot.id == bot_id))
-            )
+        root_bot_exists = await db.execute(
+            select(exists().where(TelegramBot.id == bot_id))
+        )
 
-            if not root_bot_exists.scalar():
-                await setup_root_bot(db, settings.ROOT_BOT_TOKEN.get_secret_value())
+        if not root_bot_exists.scalar():
+            await setup_root_bot(db, settings.ROOT_BOT_TOKEN.get_secret_value())
 
 
 async def setup_root_organization() -> None:
-    async with async_session() as db:
-        async with db.begin():
-            root_org_exists = await db.execute(
-                select(exists().where(Organization.id == 0))
-            )
+    async with async_session() as db, db.begin():
+        root_org_exists = await db.execute(select(exists().where(Organization.id == 0)))
 
-            if not root_org_exists.scalar():
-                db.add(
-                    Organization(
-                        id=0,
-                        title=settings.ROOT_ORGANIZATION_TITLE,
-                        admin_chat_id=settings.ROOT_ADMIN_CHAT_ID,
-                        admin_chat_thread_id=settings.ROOT_ADMIN_MESSAGES_THREAD_ID,
-                        is_admins_accept_messages=settings.ROOT_ORGANIZATION_ACCEPT_MESSAGES,
-                        is_verified=True,
-                        is_private=settings.ROOT_ORGANIZATION_PRIVATE,
-                        owner=0,
-                        created_from_bot_id=0,
-                    )
+        if not root_org_exists.scalar():
+            db.add(
+                Organization(
+                    id=0,
+                    title=settings.ROOT_ORGANIZATION_TITLE,
+                    admin_chat_id=settings.ROOT_ADMIN_CHAT_ID,
+                    admin_chat_thread_id=settings.ROOT_ADMIN_MESSAGES_THREAD_ID,
+                    is_admins_accept_messages=settings.ROOT_ORGANIZATION_ACCEPT_MESSAGES,
+                    is_verified=True,
+                    is_private=settings.ROOT_ORGANIZATION_PRIVATE,
+                    owner=0,
+                    created_from_bot_id=0,
                 )
-                await db.commit()
+            )
+            await db.commit()

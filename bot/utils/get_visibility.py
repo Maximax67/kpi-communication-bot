@@ -1,6 +1,5 @@
 from app.core.enums import VisibilityLevel
 
-
 VISIBILITY_EMOJI = {
     VisibilityLevel.PUBLIC.value: "🌐",
     VisibilityLevel.INTERNAL.value: "🏢",

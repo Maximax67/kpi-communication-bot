@@ -1,6 +1,7 @@
 import html
+
 from aiogram.types import Message
-from sqlalchemy import select, exists
+from sqlalchemy import exists, select
 from sqlalchemy.orm import aliased
 
 from app.db.models.organization import Organization

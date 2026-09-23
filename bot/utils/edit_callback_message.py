@@ -1,4 +1,5 @@
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
+
 from app.core.logger import logger
 
 

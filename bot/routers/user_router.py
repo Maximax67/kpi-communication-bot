@@ -1,6 +1,6 @@
 from aiogram import F, Router
 from aiogram.enums import ChatMemberStatus
-from aiogram.filters import CommandStart, Command, StateFilter
+from aiogram.filters import Command, CommandStart, StateFilter
 
 from bot.handlers.root.create_organization import (
     create_organization_handler,
@@ -17,7 +17,6 @@ from bot.handlers.user.verify import (
     verify_internal_handler,
 )
 from bot.states import CreateOrganizationStates
-
 
 user_router = Router()
 user_router.message.register(start_handler, CommandStart())

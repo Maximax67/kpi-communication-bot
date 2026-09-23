@@ -1,5 +1,5 @@
-from aiogram.types import Message, CallbackQuery
 from aiogram.filters.callback_data import CallbackData
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.callback import MainCallback

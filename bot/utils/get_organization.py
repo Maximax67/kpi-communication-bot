@@ -1,7 +1,7 @@
 from aiogram.types import Message
 from sqlalchemy import or_, select
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.db.models.organization import Organization
 

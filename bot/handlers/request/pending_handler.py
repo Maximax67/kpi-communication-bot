@@ -1,20 +1,20 @@
 from collections import defaultdict
 from datetime import timezone
+
 from aiogram.enums import ChatType
 from aiogram.types import Message
 from sqlalchemy import or_, select
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
+from app.core.enums import MessageStatus, MessageType
 from app.core.logger import logger
-from app.core.enums import MessageType, MessageStatus
 from app.db.models.message import Message as MessageDB
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession
 from bot.utils.format_message_url import format_message_url
 from bot.utils.get_bot import get_organization_bot
 from bot.utils.message_splitter import TelegramHTMLSplitter
-
 
 INCOMING_SECTIONS = [
     (

@@ -1,6 +1,6 @@
-from aiogram.types import Message
 from aiogram.enums import ChatType
 from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 
 from app.db.models.organization import Organization
 from bot.middlewares.db_session import LazyDbSession

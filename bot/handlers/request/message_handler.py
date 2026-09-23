@@ -1,15 +1,16 @@
 import html
 from typing import Any
+
 from aiogram import Bot
-from aiogram.types import Message, ReactionTypeEmoji, User, BufferedInputFile, MessageId
 from aiogram.enums import ChatType as TelegramChatType
+from aiogram.types import BufferedInputFile, Message, MessageId, ReactionTypeEmoji, User
 from sqlalchemy import and_, literal, or_, select
-from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 
 from app.core.crypto import crypto
+from app.core.enums import ChatType, CryptoInfo, MessageStatus, MessageType
 from app.core.logger import logger
-from app.core.enums import CryptoInfo, MessageType, MessageStatus, ChatType
 from app.db.models.banned_user import BannedUser
 from app.db.models.chat import Chat
 from app.db.models.chat_captain import ChatCaptain
@@ -30,15 +31,15 @@ async def resend_message(
     thread_id: int | None = None,
     reply_to_message_id: int | None = None,
 ) -> Message:
-    common: dict[str, Any] = dict(
-        chat_id=chat_id,
-        message_thread_id=thread_id,
-        reply_to_message_id=reply_to_message_id,
-        protect_content=message.has_protected_content,
-        reply_markup=message.reply_markup,
-        business_connection_id=message.business_connection_id,
-        message_effect_id=message.effect_id,
-    )
+    common: dict[str, Any] = {
+        "chat_id": chat_id,
+        "message_thread_id": thread_id,
+        "reply_to_message_id": reply_to_message_id,
+        "protect_content": message.has_protected_content,
+        "reply_markup": message.reply_markup,
+        "business_connection_id": message.business_connection_id,
+        "message_effect_id": message.effect_id,
+    }
 
     if message.text:
         return await bot.send_message(

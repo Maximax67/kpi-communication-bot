@@ -1,5 +1,6 @@
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 TAG_RE = re.compile(r"<(/?)([a-zA-Z0-9]+)([^>]*)>")
 SELF_CLOSING_RE = re.compile(r"/\s*>$")

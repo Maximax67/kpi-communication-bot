@@ -1,5 +1,5 @@
-from aiogram.types import Message as TelegramMessage
 from aiogram.enums import ChatType
+from aiogram.types import Message as TelegramMessage
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 

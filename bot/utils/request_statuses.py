@@ -1,9 +1,8 @@
-from app.core.enums import MessageStatus
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from app.core.enums import MessageStatus
 from bot.callback import MessageCallback
-
 
 STATUS_EMOJI = {
     MessageStatus.NEW.value: "🔴",

@@ -1,5 +1,6 @@
 import html
-from aiogram.types import Message, CallbackQuery
+
+from aiogram.types import CallbackQuery, Message
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.core.settings import settings

@@ -1,6 +1,6 @@
-from aiogram.types import Message
 from aiogram.enums import ChatType as TelegramChatType
-from sqlalchemy import select, update, delete
+from aiogram.types import Message
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import ChatType, VisibilityLevel

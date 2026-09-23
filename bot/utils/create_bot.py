@@ -1,4 +1,5 @@
 from aiogram import Bot
+
 from app.core.crypto import crypto
 from app.core.enums import CryptoInfo
 from app.db.models.telegram_bot import TelegramBot

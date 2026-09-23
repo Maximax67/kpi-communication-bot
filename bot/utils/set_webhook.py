@@ -1,4 +1,5 @@
 from urllib.parse import urljoin
+
 from aiogram import Bot
 
 from app.core.settings import settings

@@ -1,4 +1,5 @@
 import html
+
 from aiogram.enums import ChatType as TelegramChatType
 from aiogram.types import Message
 from sqlalchemy import select

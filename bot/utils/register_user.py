@@ -1,6 +1,6 @@
 from aiogram.types import User as TelegramUser
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, literal_column, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.chat import Chat
 from app.db.models.chat_user import ChatUser

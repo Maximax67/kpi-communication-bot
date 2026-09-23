@@ -1,7 +1,9 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.filters import Command
 
+from bot.callback import MessageCallback
 from bot.handlers.request.message_handler import message_handler
+from bot.handlers.request.pending_handler import pending_chat_handler, pending_handler
 from bot.handlers.request.send_handler import (
     select_admin_chat_handler,
     select_chat_handler,
@@ -11,9 +13,6 @@ from bot.handlers.request.send_handler import (
     send_task_handler,
 )
 from bot.handlers.request.status_handler import request_status_handler
-from bot.handlers.request.pending_handler import pending_handler, pending_chat_handler
-from bot.callback import MessageCallback
-
 
 request_router = Router()
 
