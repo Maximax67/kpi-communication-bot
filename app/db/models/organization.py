@@ -46,5 +46,5 @@ class Organization(Base, TimestampMixin):
         back_populates="organization", passive_deletes=True
     )
     bot: Mapped["TelegramBot | None"] = relationship(
-        back_populates="organization", uselist=False
+        back_populates="organization", uselist=False, passive_deletes=True
     )

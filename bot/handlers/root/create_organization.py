@@ -13,7 +13,7 @@ from bot.root_bot import ROOT_BOT
 from bot.states import CreateOrganizationStates
 from bot.utils.delete_last_message import delete_last_message
 from bot.utils.edit_callback_message import edit_callback_message
-from bot.utils.format_user import format_user_info
+from bot.utils.format_user import format_user_info, format_user_info_html
 from bot.utils.get_bot import get_bot
 
 
@@ -202,7 +202,8 @@ async def verify_organization(
 
     await edit_callback_message(
         callback,
-        f"{callback.message.text}\n\n✅ Підтверджено: {format_user_info(callback.from_user)}",
+        f"{html.escape(callback.message.text or '')}\n\n"
+        f"✅ Підтверджено: {format_user_info_html(callback.from_user)}",
         parse_mode="HTML",
     )
 
@@ -252,7 +253,10 @@ async def reject_organization(
     await db.delete(organization)
     await db.commit()
 
-    text = f"{callback.message.text}\n\n❌ Відхилено: {format_user_info(callback.from_user)}"
+    text = (
+        f"{html.escape(callback.message.text or '')}\n\n"
+        f"❌ Відхилено: {format_user_info_html(callback.from_user)}"
+    )
     await edit_callback_message(callback, text, parse_mode="HTML")
 
     bot_result = await db.execute(
