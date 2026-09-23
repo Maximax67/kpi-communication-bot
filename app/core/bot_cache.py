@@ -22,4 +22,4 @@ async def get_telegram_bot(bot_id: int, db: AsyncSession) -> TelegramBot | None:
 
 
 def remove_telegram_bot(bot_id: int) -> None:
-    telegram_bot_cache.pop(bot_id)
+    telegram_bot_cache.pop(bot_id, None)
